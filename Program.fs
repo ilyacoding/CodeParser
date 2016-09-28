@@ -11,6 +11,12 @@ let main argv =
         printfn "good" 
         if x < 9 then 
             printfn "goooood"
+	if x > 3 then 
+        printfn "good" 
+        if x < 9 then 
+            printfn "goooood"
     printfn "bad"
+	
+	
     System.Console.ReadKey(true) |> ignore 
     0 // return an integer exit code

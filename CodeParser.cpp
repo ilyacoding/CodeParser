@@ -6,6 +6,10 @@
 #include "fstream"
 #include "string"
 #include "vector"
+#include <algorithm> 
+#include <functional> 
+#include <cctype>
+#include <locale>
 #include "boost/algorithm/string.hpp"
 
 using namespace std;
@@ -23,7 +27,7 @@ struct Lexem {
 
 vector <Lexem> v;
 vector <string> s;
-//int CurrLine = 0;
+int OperatorsUsed = 0;
 
 int CountLeftSpaces(string str) 
 {
@@ -69,25 +73,58 @@ void ProcessBlock(int CurrLine, int PredSpaces)
 	}
 }
 
-void Process(int CurrLine, int PredSpaces)
+
+void EraseEmptyStrings()
+{
+	for (int i = 0; i < s.size() - 1; i++)
+	{
+		string str = s[i];
+		boost::algorithm::trim(str);
+		if (str.length() < 1)
+		{
+			s.erase(s.begin() + i);
+			i--;
+		}
+	}
+}
+
+void Process(int CurrLine)
 {
 	int CurrSpaces = (CountLeftSpaces(s[CurrLine]));
-	s[CurrLine] = ";BEGIN;" + s[CurrLine];
-	while (CurrLine < s.size() - 1)
+	s.insert(s.begin() + CurrLine, AddSpaces("{", CurrSpaces));
+	OperatorsUsed++;
+	cout << CurrLine << endl;
+	while ((CountLeftSpaces(s[++CurrLine]) == CurrSpaces) && (CurrLine < s.size() - 1));
+	cout << CurrSpaces << endl << CountLeftSpaces(s[CurrLine]) << endl;
+
+	if (CurrSpaces > CountLeftSpaces(s[CurrLine]))
 	{
-		while (CountLeftSpaces(s[CurrLine++]) == CurrSpaces);
-		if (CurrSpaces > CountLeftSpaces(s[CurrLine]))
+		cout << CurrSpaces << endl << CountLeftSpaces(s[CurrLine]) << endl;
+		s.insert(s.begin() + CurrLine, AddSpaces("}", CurrSpaces));
+		OperatorsUsed++;
+	}
+	else if (CurrSpaces < CountLeftSpaces(s[CurrLine])) {
+		Process(CurrLine);
+		vector <int> queue;
+		int DefSpaces = 1;
+		while ((CountLeftSpaces(s[++CurrLine]) >= CurrSpaces) && (CurrLine < s.size() - 1))
+			if ((CountLeftSpaces(s[CurrLine]) > CurrSpaces) && (DefSpaces))
+			{
+				DefSpaces = CountLeftSpaces(s[CurrLine]);
+				queue.push_back(CurrLine + OperatorsUsed);
+			}
+			
+
+		s.insert(s.begin() + CurrLine, AddSpaces("}", CurrSpaces));
+		OperatorsUsed++;
+
+		for (int i = 0; i < queue.size() - 1; i++)
 		{
-			s[CurrLine] = ";END;" + s[CurrLine];
-			break;
+			cout << "QUEUE: " << queue[i] << endl;
+			//if (queue[i] < s.size() - 1)
+				//Process(queue[i]);
 		}
-		else if (CurrSpaces < CountLeftSpaces(s[CurrLine])) {
-			Process(CurrLine, CurrSpaces);
-		}
-		else {
-			CurrLine++;
-		}
-	
+
 	}
 }
 
@@ -103,13 +140,14 @@ int main()
 		s.push_back(buf);
 	}
 
-	int CurrLine = 7;
+	EraseEmptyStrings();
+	Process(0);
+	//Process(14);
+/*
+	int CurrLine = 4;
 	int CurrSpaces = (CountLeftSpaces(s[CurrLine]));
 	s.insert(s.begin() + CurrLine, AddSpaces("{", CurrSpaces));
 	cout << CurrLine << endl;
-	//s[CurrLine] = ";BEGIN;" + s[CurrLine];
-	//while (CurrLine < s.size() - 1)
-	//{
 		while ((CountLeftSpaces(s[++CurrLine]) == CurrSpaces) && (CurrLine < s.size() - 1));
 		cout << CurrSpaces << endl << CountLeftSpaces(s[CurrLine]) << endl;
 		
@@ -120,37 +158,18 @@ int main()
 			//break;
 		}
 		else if (CurrSpaces < CountLeftSpaces(s[CurrLine])) {
-		//	Process(CurrLine, CurrSpaces);
+			//	Process(CurrLine, CurrSpaces);
 			//s[CurrLine] = "GO HERE" + s[CurrLine];
 			while ((CountLeftSpaces(s[++CurrLine]) >= CurrSpaces) && (CurrLine < s.size() - 1));
 			s.insert(s.begin() + CurrLine, AddSpaces("}", CurrSpaces));
 		}
-	//	else {
-	//		CurrLine++;
-	//	}
-	//	break;
-	//}
 
-	//ProcessBlock(0, 0);
-	/*for (int i = 0; i < s.size(); i++) {
-		CurrS = CountLeftSpaces(s[i]);
+		*/
 
-		if (CurrS > PredS) {
-			v.push_back(Lexem(BEGIN));
-			for (int j = 0; j < PredS; j++)
-				cout << " ";
-			cout << "BEGIN" << endl;
-		} else if (PredS > CurrS) {
-			if (CurrS > 0) {
-				for (int k = 1; k < PredS / CurrS; k++) {
-					v.push_back(Lexem(END));
-					for (int j = 0; j < CurrS; j++)
-						cout << " ";
-					cout << "END" << endl;
-				}
-			}
-		}*/
-	//Process(0, 0);
+
+
+
+
 	for (int i = 0; i < s.size(); i++)
 	{
 		cout << s[i] << endl;
