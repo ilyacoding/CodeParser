@@ -14,18 +14,6 @@
 
 using namespace std;
 
-enum Token {
-	BEGIN, END, IF
-};
-
-struct Lexem {
-	Token tok;
-	//string value;
-	//Lexem() :tok(BEGIN) {};
-	Lexem(Token tk) :tok(tk) {};
-};
-
-vector <Lexem> v;
 vector <string> s;
 int OperatorsUsed = 0;
 
@@ -43,36 +31,6 @@ string AddSpaces(string str, int count)
 		str = ' ' + str;
 	return str;
 }
-
-void ProcessBlock(int CurrLine, int PredSpaces)
-{
-	int CurrSpaces = (CountLeftSpaces(s[CurrLine]));
-	while (CurrLine < s.size())
-	{
-		if (CountLeftSpaces(s[CurrLine]) > CurrSpaces) {
-			for (int j = 0; j < CurrSpaces; j++)
-				cout << " ";
-			cout << "BEGIN" << endl;
-			cout << s[CurrLine] << endl;
-			ProcessBlock(CurrLine, CurrSpaces);
-			while (PredSpaces < (CountLeftSpaces(s[CurrLine++])));
-			for (int j = 0; j < CurrSpaces; j++)
-				cout << " ";
-			cout << "END" << endl;
-			break;
-		}
-		else if (CurrSpaces > CountLeftSpaces(s[CurrLine])) {
-			for (int j = 0; j < CurrSpaces; j++)
-				cout << " ";
-			cout << "END" << endl;
-			ProcessBlock(CurrLine, CurrSpaces);
-			break;
-		}
-		else { cout << s[CurrLine] << endl; }
-		CurrLine++;
-	}
-}
-
 
 void EraseEmptyStrings()
 {
@@ -142,47 +100,58 @@ int main()
 
 	EraseEmptyStrings();
 	Process(0);
-	//Process(14);
-/*
-	int CurrLine = 4;
-	int CurrSpaces = (CountLeftSpaces(s[CurrLine]));
-	s.insert(s.begin() + CurrLine, AddSpaces("{", CurrSpaces));
-	cout << CurrLine << endl;
-		while ((CountLeftSpaces(s[++CurrLine]) == CurrSpaces) && (CurrLine < s.size() - 1));
-		cout << CurrSpaces << endl << CountLeftSpaces(s[CurrLine]) << endl;
-		
-		if (CurrSpaces > CountLeftSpaces(s[CurrLine]))
-		{		
-			cout << CurrSpaces << endl << CountLeftSpaces(s[CurrLine]) << endl;
-			s.insert(s.begin() + CurrLine, AddSpaces("}", CurrSpaces));
-			//break;
-		}
-		else if (CurrSpaces < CountLeftSpaces(s[CurrLine])) {
-			//	Process(CurrLine, CurrSpaces);
-			//s[CurrLine] = "GO HERE" + s[CurrLine];
-			while ((CountLeftSpaces(s[++CurrLine]) >= CurrSpaces) && (CurrLine < s.size() - 1));
-			s.insert(s.begin() + CurrLine, AddSpaces("}", CurrSpaces));
-		}
-
-		*/
-
-
-
-
 
 	for (int i = 0; i < s.size(); i++)
 	{
 		cout << s[i] << endl;
 	}
 
-		//cout << CountSpaces(s[i]);
-		//cout << s[i] << endl;
-		//PredS = CurrS;
-	//}
-
 	file.close();
 
 	system("pause");
     return 0;
 }
+	//Process(14);
+	/*
+	enum Token {
+	BEGIN, END, IF
+	};
+
+	struct Lexem {
+	Token tok;
+	//string value;
+	//Lexem() :tok(BEGIN) {};
+	Lexem(Token tk) :tok(tk) {};
+	};
+
+	vector <Lexem> v;*/
+	/*
+	int CurrLine = 4;
+	int CurrSpaces = (CountLeftSpaces(s[CurrLine]));
+	s.insert(s.begin() + CurrLine, AddSpaces("{", CurrSpaces));
+	cout << CurrLine << endl;
+	while ((CountLeftSpaces(s[++CurrLine]) == CurrSpaces) && (CurrLine < s.size() - 1));
+	cout << CurrSpaces << endl << CountLeftSpaces(s[CurrLine]) << endl;
+
+	if (CurrSpaces > CountLeftSpaces(s[CurrLine]))
+	{
+	cout << CurrSpaces << endl << CountLeftSpaces(s[CurrLine]) << endl;
+	s.insert(s.begin() + CurrLine, AddSpaces("}", CurrSpaces));
+	//break;
+	}
+	else if (CurrSpaces < CountLeftSpaces(s[CurrLine])) {
+	//	Process(CurrLine, CurrSpaces);
+	//s[CurrLine] = "GO HERE" + s[CurrLine];
+	while ((CountLeftSpaces(s[++CurrLine]) >= CurrSpaces) && (CurrLine < s.size() - 1));
+	s.insert(s.begin() + CurrLine, AddSpaces("}", CurrSpaces));
+	}
+
+	*/
+
+
+	//cout << CountSpaces(s[i]);
+	//cout << s[i] << endl;
+	//PredS = CurrS;
+	//}
+
 
