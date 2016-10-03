@@ -4,7 +4,7 @@
 let main argv = 
     printfn "%A" argv
     let x = 5 
-    if x < 3 then
+    if x<3 then
         printfn "ddd"
         printfn "ddda"
     if x > 3 then 
@@ -16,9 +16,9 @@ let main argv =
         if x < 9 then 
             printfn "goooood"
             if x > 8 then
-             printfn "ggg"
+                printfn "ggg"
             if x < 9 then
-              printfn "asdasd"
+                printfn "asdasd"
     printfn "bad"
 	
 	

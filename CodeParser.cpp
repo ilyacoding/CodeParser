@@ -15,6 +15,9 @@
 using namespace std;
 
 vector <string> s;
+//vector <vector <string>> l;
+vector <string> l;
+
 int OperatorsUsed = 0;
 
 int CountLeftSpaces(string str) 
@@ -68,11 +71,36 @@ void DeleteComments()
 	}
 }
 
+void DeleteStrings()
+{
+	bool Delete = false;
+	for (int i = 0; i < s.size() - 1; i++)
+	{
+		for (int j = 0; j < s[i].length(); j++)
+		{
+			if (Delete) {
+				if (s[i][j] == '"') {
+					Delete = false;
+					s[i][j++] = ' ';
+				}
+				else {
+					s[i][j] = ' ';
+				}
+			}
+			if (s[i][j] == '"') {
+				Delete = true;
+				s[i][j] = ' ';
+			}
+		}
+	}
+}
+
 void EraseEmptyStrings()
 {
 	for (int i = 0; i < s.size() - 1; i++)
 	{
 		string str = s[i];
+		boost::algorithm::trim_right(s[i]);
 		boost::algorithm::trim(str);
 		if (str.length() < 1)
 		{
@@ -82,6 +110,36 @@ void EraseEmptyStrings()
 	}
 }
 
+void GetLexems()
+{
+	for (int i = 0; i < s.size() - 1; i++)
+	{
+		//vector <string> v;
+		//l.push_back(v);
+		string buf = "";
+		string str;
+		str = boost::algorithm::trim_copy(s[i]);
+
+		for (int j = 0; j < str.length(); j++)
+		{
+			while ((isalpha(str[j]) || str[j] == '.' || isdigit(str[j])) && (j < str.length())) buf += str[j++];
+			if (buf.length() > 0) {
+				l.push_back(buf);
+				cout << "BUFF1: " << buf << endl;
+				buf = "";
+			}
+
+			while ((!isspace(str[j]) && !isalpha(str[j]) && !isdigit(str[j])) && (j < str.length())) buf += str[j++];
+			if (buf.length() > 0) {
+				l.push_back(buf);
+				cout << "BUFF2: " << buf << endl;
+				buf = "";
+			}
+			if (isalpha(str[j]) || isdigit(str[j])) j--;
+		}
+	}
+}
+/*
 void Process(int CurrLine)
 {
 	int CurrSpaces = (CountLeftSpaces(s[CurrLine]));
@@ -121,7 +179,7 @@ void Process(int CurrLine)
 
 	}
 }
-
+*/
 void AddBlocks(int CurrLine)
 {
 	int CurrSpaces = (CountLeftSpaces(s[CurrLine]));
@@ -171,8 +229,10 @@ int main()
 	}
 
 	DeleteComments();
+	DeleteStrings();
 	EraseEmptyStrings();
-	AddBlocks(0);
+	GetLexems();
+	//AddBlocks(0);
 
 	cout << endl << endl << "====================" << endl;
 	for (int i = 0; i < s.size(); i++)
@@ -180,6 +240,12 @@ int main()
 		cout << s[i] << endl;
 	}
 	cout << "====================" << endl;
+
+	for (int i = 0; i < l.size() - 1; i++)
+	{
+		//for (int j = 0; j < l[i].size() - 1; j++)
+			cout << l[i] << endl;
+	}
 
 	file.close();
 
