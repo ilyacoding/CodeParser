@@ -10,7 +10,26 @@
 #include <functional> 
 #include <cctype>
 #include <locale>
-#include "boost/algorithm/string.hpp"
+//#include "boost/algorithm/string.hpp"
+
+// trim from start
+static inline std::string &ltrim(std::string &s) {
+	s.erase(s.begin(), std::find_if(s.begin(), s.end(),
+		std::not1(std::ptr_fun<int, int>(std::isspace))));
+	return s;
+}
+
+// trim from end
+static inline std::string &rtrim(std::string &s) {
+	s.erase(std::find_if(s.rbegin(), s.rend(),
+		std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+	return s;
+}
+
+// trim from both ends
+static inline std::string &trim(std::string &s) {
+	return ltrim(rtrim(s));
+}
 
 using namespace std;
 
@@ -49,6 +68,8 @@ void InitLexems()
 	op.push_back("<-");
 	op.push_back("let");
 	op.push_back("printfn");
+	op.push_back("printf");
+	op.push_back("sprintf");
 
 	/*op.push_back("abs");
 	op.push_back("ceil");
@@ -154,11 +175,13 @@ void DeleteStrings()
 
 void EraseEmptyStrings()
 {
-	for (int i = 0; i < s.size(); i++)
+	for (int i = 0; i < s.size() - 1; i++)
 	{
 		string str = s[i];
-		boost::algorithm::trim_right(s[i]);
-		boost::algorithm::trim(str);
+		rtrim(s[i]);
+		trim(str);
+		//boost::algorithm::trim_right(s[i]);
+		//boost::algorithm::trim(str);
 		if (str.length() < 1)
 		{
 			s.erase(s.begin() + i);
@@ -171,107 +194,32 @@ void GetLexems()
 {
 	for (int i = 0; i < s.size() - 1; i++)
 	{
-		//vector <string> v;
-		//l.push_back(v);
 		string buf = "";
 		string str;
-		str = boost::algorithm::trim_copy(s[i]);
+		str = s[i];
+		//str = boost::algorithm::trim_copy(s[i]);
+		trim(str);
 
 		for (int j = 0; j < str.length(); j++)
 		{
 			while ((isalpha(str[j]) || str[j] == '.' || isdigit(str[j])) && (j < str.length())) buf += str[j++];
 			if (buf.length() > 0) {
-				boost::algorithm::trim(buf);
+				//boost::algorithm::trim(buf);
+				trim(buf);
 				l.push_back(buf);
-				//cout << "BUFF1: " << buf << endl;
 				buf = "";
 			}
 
 			while ((!isspace(str[j]) && !isalpha(str[j]) && !isdigit(str[j])) && (j < str.length())) buf += str[j++];
 			if (buf.length() > 0) {
-				boost::algorithm::trim(buf);
+				//boost::algorithm::trim(buf);
+				trim(buf);
 				l.push_back(buf);
-				//cout << "BUFF2: " << buf << endl;
 				buf = "";
 			}
 			if (isalpha(str[j]) || isdigit(str[j])) j--;
 		}
 	}
-}
-/*
-void Process(int CurrLine)
-{
-	int CurrSpaces = (CountLeftSpaces(s[CurrLine]));
-	s.insert(s.begin() + CurrLine, AddSpaces(";BEGIN;", CurrSpaces));
-	OperatorsUsed++;
-	cout << CurrLine << endl;
-	while ((CountLeftSpaces(s[++CurrLine]) == CurrSpaces) && (CurrLine < s.size() - 1));
-	cout << CurrSpaces << endl << CountLeftSpaces(s[CurrLine]) << endl;
-
-	if (CurrSpaces > CountLeftSpaces(s[CurrLine]))
-	{
-		cout << CurrSpaces << endl << CountLeftSpaces(s[CurrLine]) << endl;
-		s.insert(s.begin() + CurrLine, AddSpaces(";END;", CurrSpaces));
-		OperatorsUsed++;
-	}
-	else if (CurrSpaces < CountLeftSpaces(s[CurrLine])) {
-		Process(CurrLine);
-		vector <int> queue;
-		int DefSpaces = 1;
-		while ((CountLeftSpaces(s[++CurrLine]) >= CurrSpaces) && (CurrLine < s.size() - 1))
-			if ((CountLeftSpaces(s[CurrLine]) > CurrSpaces) && (DefSpaces))
-			{
-				DefSpaces = CountLeftSpaces(s[CurrLine]);
-				queue.push_back(CurrLine + OperatorsUsed);
-			}
-			
-
-		s.insert(s.begin() + CurrLine, AddSpaces(";END;", CurrSpaces));
-		OperatorsUsed++;
-
-		for (int i = 0; i < queue.size() - 1; i++)
-		{
-			cout << "QUEUE: " << queue[i] << endl;
-			//if (queue[i] < s.size() - 1)
-				//Process(queue[i]);
-		}
-
-	}
-}
-*/
-void AddBlocks(int CurrLine)
-{
-	int CurrSpaces = (CountLeftSpaces(s[CurrLine]));
-	int PredSpaces = 0;
-	vector <int> q;
-
-	boost::algorithm::trim(s[CurrLine]);
-	s[CurrLine] = AddSpaces("{", CurrSpaces) + s[CurrLine];
-
-
-	for (int i = CurrLine + 1; i < s.size(); i++) {
-		if ((CountLeftSpaces(s[i]) < CurrSpaces) || (i == s.size() - 1)) {
-			s[i - 1] = s[i - 1] + "}";
-			break;
-		}
-		else if ((CountLeftSpaces(s[i]) > CurrSpaces) && (PredSpaces == CurrSpaces)) {
-			q.push_back(i);
-		}
-		PredSpaces = CountLeftSpaces(s[i]);
-	}
-	cout << endl << "===" << endl;
-	for (int i = 0; i < q.size(); i++) {
-		cout << "Q: " << q[i] << " |";
-	}
-	if (q.size() == 0)
-		cout << "EMPTY Q";
-	cout << endl << "===" << endl;
-
-	for (int i = 0; i < q.size(); i++) {
-		AddBlocks(q[i]);
-	}
-
-
 }
 
 int IsLexem(string str) 
@@ -294,17 +242,22 @@ void CalcDepth(int CurrLine, int CurrLvl)
 {
 	int CurrSpaces = (CountLeftSpaces(s[CurrLine]));
 	int PredSpaces = 0;
+	int CurrLvlEnter = CurrLvl;
 	vector <int> q;
+	vector <int> qS;
 
 	for (int i = CurrLine; i < s.size(); i++) {
 		// Process
 		if (s[i].find("match", 0) != string::npos) {
-			// MATCH found
 			int CountCase = 0;
 			i++;
-			while (boost::algorithm::trim_copy(s[i])[0] == '|') {
+			string str = "";
+			str = s[i];
+			//while (boost::algorithm::trim_copy(s[i])[0] == '|') {
+			while (trim(str)[0] == '|') {
 				CountCase++;
-				i++;
+				//i++;
+				str = s[++i];
 			}
 			if (CurrLvl + CountCase - 2 > CLI) {
 				CLI = CurrLvl + CountCase - 2;
@@ -315,7 +268,6 @@ void CalcDepth(int CurrLine, int CurrLvl)
 			if (CurrLvl > CLI) {
 				CLI = CurrLvl;
 			}
-		//	cout << "FOUND IF:" << CurrLvl << ":" << s[i] << endl;
 		}
 		// Process
 
@@ -323,21 +275,22 @@ void CalcDepth(int CurrLine, int CurrLvl)
 			break;
 		} else if ((CountLeftSpaces(s[i]) > CurrSpaces) && (PredSpaces == CurrSpaces)) {
 			q.push_back(i);
+			if (s[i - 1].find("elif ", 0) != string::npos) {
+				qS.push_back(++CurrLvlEnter);
+				cout << "FOUND ELIF" << CurrLvlEnter << endl;
+				if (CurrLvlEnter > CLI) {
+					CLI = CurrLvlEnter;
+				}
+			}
+			else {
+				qS.push_back(CurrLvlEnter);
+			}
 		}
 		PredSpaces = CountLeftSpaces(s[i]);
 	}
 
-	//cout << endl << "===" << endl;
-	//cout << "LEVEL: " << CurrLvl << endl;
-	//for (int i = 0; i < q.size(); i++) {
-	//	cout << "Q: " << q[i] << " |";
-	//}
-	//if (q.size() == 0)
-	//	cout << "EMPTY Q";
-	//cout << endl << "===" << endl;
-
 	for (int i = 0; i < q.size(); i++) {
-		CalcDepth(q[i], CurrLvl + 1);
+		CalcDepth(q[i], qS[i] + 1);
 	}
 
 
@@ -376,13 +329,12 @@ int main()
 
 	for (int i = 0; i < l.size() - 1; i++)
 	{
-		//for (int j = 0; j < l[i].size() - 1; j++)
-			//cout << l[i] << ":" << IsLexem(l[i]) << ":" << IsCondLexem(l[i]) << endl;
-			CL += IsLexem(l[i]);
-			cl += IsCondLexem(l[i]);
+		cout << l[i] << ":" << IsLexem(l[i]) << ":" << IsCondLexem(l[i]) << endl;
+		CL += IsLexem(l[i]);
+		cl += IsCondLexem(l[i]);
 	}
 	
-	cout << "==================== RESULT ====================" << endl;
+	cout << endl << "==================== RESULT ====================" << endl;
 	cout.precision(2);
 	cout << "CL: " << CL << endl;
 	cout << "cl: " << (float)cl/CL << endl;
