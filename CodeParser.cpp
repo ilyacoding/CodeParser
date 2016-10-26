@@ -331,7 +331,7 @@ void ProcessVars(int CurrLine, int CurrLvl)
 	cout << endl << "===" << endl;*/
 
 	for (int i = 0; i < q.size(); i++) {
-		CalcDepth(q[i], qS[i] + 1);
+		ProcessVars(q[i], qS[i] + 1);
 	}
 }
 
@@ -441,7 +441,7 @@ int main()
 
 
 	GetLexems();
-	GetVars();
+	//();
 	CalcDepth(0, 0);
 
 	cout << "==================== CODE ====================" << endl;
