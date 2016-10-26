@@ -1,0 +1,570 @@
+(*** hide ***)
+(* Copyright 2015 Hanh Huynh Huu
+This file is part of F# Bitcoin.
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files 
+(the "Software"), to deal in the Software without restriction, including without limitation the rights to use, 
+copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, 
+and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
+FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*)
+
+(**
+# Wallet
+*)
+module Wallet
+
+(*** hide ***)
+open System
+open System.Collections
+open System.Text
+open System.Linq
+open System.IO
+open System.Net
+open Org.BouncyCastle.Crypto.Digests
+open Org.BouncyCastle.Crypto.Macs
+open Org.BouncyCastle.Crypto.Parameters
+open Org.BouncyCastle.Math.EC
+open Org.BouncyCastle.Utilities.Encoders
+open Db
+open Protocol
+open Murmur
+open Script
+
+let secp256k1Curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1")
+let ecDomain = new ECDomainParameters(secp256k1Curve.Curve, secp256k1Curve.G, secp256k1Curve.N)
+
+    
+let createBigInt (bytes: byte[]) = new Org.BouncyCastle.Math.BigInteger(1, bytes)
+
+(**
+## Utilities to work with addresses
+The rest of the code is only dealing with binary data whether in the form of hashes or keys. Base58 encoding
+is human readable but not as efficient for storing and comparison.
+*)
+let base58alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+let fromBase58 (base58: string) =
+    let bi = 
+        base58.ToCharArray()
+            |> Seq.fold (fun acc digit ->
+                acc * 58I + bigint (base58alphabet.IndexOf(digit))
+                ) 0I
+    let biBytes = bi.ToByteArray() |> Array.rev
+    let leading0Out = base58.ToCharArray() |> Seq.takeWhile (fun c -> c = '1') |> Seq.length // how many leading 0 we want
+    let leading0In = biBytes |> Seq.takeWhile (fun d -> d = 0uy) |> Seq.length // how many leading 0 we have so far
+    let delta0 = leading0Out - leading0In
+    if delta0 > 0 then // adjust the number of leading 0 by adding or truncating
+        [(Array.zeroCreate<byte> delta0); biBytes] |> Array.concat
+    elif delta0 < 0 then
+        biBytes.[-delta0..]
+    else
+        biBytes
+
+let toBase58 (bytes: byte[]) =
+    let bi = new bigint(bytes |> Array.rev)
+    let sb = new StringBuilder()
+    Protocol.iterate (fun (bi: bigint) ->
+            let (div, rem) = bigint.DivRem (bi, 58I)
+            sb.Append(base58alphabet.[int rem]) |> ignore
+            div
+            )
+            bi
+        |> Seq.takeWhile(fun bi -> bi <> 0I) |> Seq.length |> ignore
+    bytes |> Seq.takeWhile (fun b -> b = 0uy) |> Seq.iter (fun _ -> sb.Append '1' |> ignore) // add leading 1s
+    new string(sb.ToString().ToCharArray() |> Array.rev)
+
+let to58Check (version: byte) (bytes: byte[]) =
+    let bytesVer = [[| version |]; bytes] |> Array.concat
+    let checksum = (dsha bytesVer).[0..3]
+    [bytesVer; checksum] |> Array.concat
+
+exception InvalidBase58CheckException
+
+let from58Check (version: byte) (bytes: byte[]) =
+    if bytes.Length < 4 then raise InvalidBase58CheckException
+    let v = bytes.[0]
+    let c = bytes.[bytes.Length-4..]
+    let bs = bytes.[0..bytes.Length-5]
+    let checksum = (dsha bs).[0..3]
+    if v <> version || not (hashCompare.Equals(checksum, c)) then raise InvalidBase58CheckException
+    bs.[1..]
+
+let fromBase58Check (version: byte) = fromBase58 >> (from58Check version)
+let toBase58Check (version: byte) = toBase58 << (to58Check version)
+
+let toAddress = hash160 >> (toBase58Check 0uy)
+
+(**
+## [BIP-32][2] Hierarchical Deterministic Wallets
+[2]: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+*)
+let hmacOf(chain: byte[])(fnChain: unit -> byte[]) =
+    let sha512 = new Sha512Digest()
+    let hmac = new HMac(sha512)
+    hmac.Init(new KeyParameter(chain))
+    let data = fnChain()
+    hmac.BlockUpdate(data, 0, data.Length)
+    let res = Array.zeroCreate 64
+    hmac.DoFinal(res, 0) |> ignore
+    (res.[0..31], res.[32..])
+
+exception BIP32Exception
+
+type BIP32PrivKeyExt(secret: Org.BouncyCastle.Math.BigInteger, chain: byte[]) =
+    let toPub() = 
+        let p = ecDomain.G.Multiply(secret)
+        new FpPoint(ecDomain.Curve, p.X, p.Y, true)
+
+    let toPrivChild index =
+        let (l, r) =
+                hmacOf chain (fun () ->
+                use ms = new MemoryStream()
+                use writer = new BinaryWriter(ms)
+                if index < 0 then
+                    writer.Write(0uy)
+                    writer.Write(secret.ToByteArrayUnsigned())
+                else
+                    writer.Write(toPub().GetEncoded())
+                writer.Write(IPAddress.HostToNetworkOrder(index))
+                ms.ToArray()
+            )
+        let childSecret = createBigInt(l).Add(secret).Mod(ecDomain.N)
+        new BIP32PrivKeyExt(childSecret, r)
+
+    member x.ToPublic() = toPub()
+    member x.ToPrivChild(index: int) = toPrivChild index
+    member x.ToPublicExt() = new BIP32PublicExt(x.ToPublic(), chain)
+
+and BIP32PublicExt(point: ECPoint, chain: byte[]) =
+    let toPublicChild index =
+        let (l, r) =
+                hmacOf chain (fun () ->
+                use ms = new MemoryStream()
+                use writer = new BinaryWriter(ms)
+                if index < 0 then raise BIP32Exception
+                else
+                    writer.Write(point.GetEncoded())
+                writer.Write(IPAddress.HostToNetworkOrder(index))
+                ms.ToArray()
+            )
+        let childPoint = ecDomain.G.Multiply(createBigInt(l)).Add(point)
+        new BIP32PublicExt(FpPoint(ecDomain.Curve, childPoint.X, childPoint.Y, true), r)
+
+    override x.ToString() = sprintf "(%s,%s)" (point.GetEncoded() |> Hex.ToHexString) (chain |> Hex.ToHexString)
+    member x.ToPublic() = point
+    member x.ToPublicChild(index: int) = toPublicChild index
+
+let BIP32master (master: byte[]) =
+     let (l, r) = hmacOf(Encoding.ASCII.GetBytes "Bitcoin seed") (fun () -> master)
+     new BIP32PrivKeyExt(new Org.BouncyCastle.Math.BigInteger(1, l), r)
+
+(**
+## [Electrum][3] Wallet
+Electrum style deterministic wallets. It requires the master public key
+[3]: https://electrum.org/
+*)
+type Electrum(mpub: byte[], group: int) =
+    let deriveExp index =
+        use ms = new MemoryStream()
+        use writer = new BinaryWriter(ms)
+        let prefix = sprintf "%d:%d:" index group
+        writer.Write(Encoding.ASCII.GetBytes prefix)
+        writer.Write(mpub)
+        ms.ToArray() |> dsha |> createBigInt
+    let masterPoint = ecDomain.Curve.CreatePoint(createBigInt(mpub.[0..31]), createBigInt(mpub.[32..]), true)
+    
+    member x.Derive(index: int) = ecDomain.G.Multiply(deriveExp index).Add(masterPoint)
+        
+(**
+## [Armory][4] Wallet
+Armory style deterministic wallets. It requires the public master key and the chain code
+[4]: https://bitcoinarmory.com/
+*)
+type Armory(chain: byte[]) =
+    let derive (pkey: byte[]) =
+        let point = ecDomain.Curve.DecodePoint pkey
+        let pkeyUnc = new FpPoint(ecDomain.Curve, point.X, point.Y, false)
+        let chainMod = dsha (pkeyUnc.GetEncoded())
+        let chain2 = 
+            Array.map2 (fun a b -> a ^^^ b)
+                chain chainMod
+        let exp = createBigInt chain2
+        point.Multiply exp
+
+    member x.Derive pk = derive pk
+
+(*** hide ***)
+let electrumHashes (mpk: byte[]) (cReceive: int) (cChange: int) = 
+    let electrumReceive = new Electrum(mpk, 0)
+    let electrumChange = new Electrum(mpk, 1)
+    let derive (electrumWallet: Electrum) (c: int) = 
+        seq {
+            for i in 0..c-1 do
+            let pubKey = electrumWallet.Derive(i).GetEncoded() 
+            yield pubKey |> hash160
+        }
+    [derive electrumReceive cReceive; derive electrumChange cChange] |> Seq.concat
+
+let armoryHashes (mpk: byte[]) (c: int) = 
+    let armory = new Armory(mpk.[33..])
+    let addresses = 
+        Protocol.iterate (fun (pk: byte[]) ->
+            (armory.Derive pk).GetEncoded()
+        ) mpk.[0..32] |> Seq.map hash160
+
+    addresses |> Seq.skip 1 |> Seq.take c
+
+let bip32Hashes (mpk: byte[]) (chain: byte[]) (isReceived: bool) (c: int) = 
+    let publicKeyExt = (new BIP32PublicExt(ecDomain.Curve.DecodePoint(mpk), chain)).ToPublicChild(if isReceived then 0 else 1)
+
+    seq { 
+        for i in 0..c-1 do
+            yield publicKeyExt.ToPublicChild(i).ToPublic().GetEncoded() |> hash160
+}
+
+let secp256k1Curve = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1")
+let ecDomain = new ECDomainParameters(secp256k1Curve.Curve, secp256k1Curve.G, secp256k1Curve.N)
+
+    
+let createBigInt (bytes: byte[]) = new Org.BouncyCastle.Math.BigInteger(1, bytes)
+
+(**
+## Utilities to work with addresses
+The rest of the code is only dealing with binary data whether in the form of hashes or keys. Base58 encoding
+is human readable but not as efficient for storing and comparison.
+*)
+let base58alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+let fromBase58 (base58: string) =
+    let bi = 
+        base58.ToCharArray()
+            |> Seq.fold (fun acc digit ->
+                acc * 58I + bigint (base58alphabet.IndexOf(digit))
+                ) 0I
+    let biBytes = bi.ToByteArray() |> Array.rev
+    let leading0Out = base58.ToCharArray() |> Seq.takeWhile (fun c -> c = '1') |> Seq.length // how many leading 0 we want
+    let leading0In = biBytes |> Seq.takeWhile (fun d -> d = 0uy) |> Seq.length // how many leading 0 we have so far
+    let delta0 = leading0Out - leading0In
+    if delta0 > 0 then // adjust the number of leading 0 by adding or truncating
+        [(Array.zeroCreate<byte> delta0); biBytes] |> Array.concat
+    elif delta0 < 0 then
+        biBytes.[-delta0..]
+    else
+        biBytes
+
+let toBase58 (bytes: byte[]) =
+    let bi = new bigint(bytes |> Array.rev)
+    let sb = new StringBuilder()
+    Protocol.iterate (fun (bi: bigint) ->
+            let (div, rem) = bigint.DivRem (bi, 58I)
+            sb.Append(base58alphabet.[int rem]) |> ignore
+            div
+            )
+            bi
+        |> Seq.takeWhile(fun bi -> bi <> 0I) |> Seq.length |> ignore
+    bytes |> Seq.takeWhile (fun b -> b = 0uy) |> Seq.iter (fun _ -> sb.Append '1' |> ignore) // add leading 1s
+    new string(sb.ToString().ToCharArray() |> Array.rev)
+
+let to58Check (version: byte) (bytes: byte[]) =
+    let bytesVer = [[| version |]; bytes] |> Array.concat
+    let checksum = (dsha bytesVer).[0..3]
+    [bytesVer; checksum] |> Array.concat
+
+exception InvalidBase58CheckException
+
+let from58Check (version: byte) (bytes: byte[]) =
+    if bytes.Length < 4 then raise InvalidBase58CheckException
+    let v = bytes.[0]
+    let c = bytes.[bytes.Length-4..]
+    let bs = bytes.[0..bytes.Length-5]
+    let checksum = (dsha bs).[0..3]
+    if v <> version || not (hashCompare.Equals(checksum, c)) then raise InvalidBase58CheckException
+    bs.[1..]
+
+let fromBase58Check (version: byte) = fromBase58 >> (from58Check version)
+let toBase58Check (version: byte) = toBase58 << (to58Check version)
+
+let toAddress = hash160 >> (toBase58Check 0uy)
+
+(**
+## [BIP-32][2] Hierarchical Deterministic Wallets
+[2]: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+*)
+let hmacOf(chain: byte[])(fnChain: unit -> byte[]) =
+    let sha512 = new Sha512Digest()
+    let hmac = new HMac(sha512)
+    hmac.Init(new KeyParameter(chain))
+    let data = fnChain()
+    hmac.BlockUpdate(data, 0, data.Length)
+    let res = Array.zeroCreate 64
+    hmac.DoFinal(res, 0) |> ignore
+    (res.[0..31], res.[32..])
+
+exception BIP32Exception
+
+type BIP32PrivKeyExt(secret: Org.BouncyCastle.Math.BigInteger, chain: byte[]) =
+    let toPub() = 
+        let p = ecDomain.G.Multiply(secret)
+        new FpPoint(ecDomain.Curve, p.X, p.Y, true)
+
+    let toPrivChild index =
+        let (l, r) =
+                hmacOf chain (fun () ->
+                use ms = new MemoryStream()
+                use writer = new BinaryWriter(ms)
+                if index < 0 then
+                    writer.Write(0uy)
+                    writer.Write(secret.ToByteArrayUnsigned())
+                else
+                    writer.Write(toPub().GetEncoded())
+                writer.Write(IPAddress.HostToNetworkOrder(index))
+                ms.ToArray()
+            )
+        let childSecret = createBigInt(l).Add(secret).Mod(ecDomain.N)
+        new BIP32PrivKeyExt(childSecret, r)
+
+    member x.ToPublic() = toPub()
+    member x.ToPrivChild(index: int) = toPrivChild index
+    member x.ToPublicExt() = new BIP32PublicExt(x.ToPublic(), chain)
+
+and BIP32PublicExt(point: ECPoint, chain: byte[]) =
+    let toPublicChild index =
+        let (l, r) =
+                hmacOf chain (fun () ->
+                use ms = new MemoryStream()
+                use writer = new BinaryWriter(ms)
+                if index < 0 then raise BIP32Exception
+                else
+                    writer.Write(point.GetEncoded())
+                writer.Write(IPAddress.HostToNetworkOrder(index))
+                ms.ToArray()
+            )
+        let childPoint = ecDomain.G.Multiply(createBigInt(l)).Add(point)
+        new BIP32PublicExt(FpPoint(ecDomain.Curve, childPoint.X, childPoint.Y, true), r)
+
+    override x.ToString() = sprintf "(%s,%s)" (point.GetEncoded() |> Hex.ToHexString) (chain |> Hex.ToHexString)
+    member x.ToPublic() = point
+    member x.ToPublicChild(index: int) = toPublicChild index
+
+let BIP32master (master: byte[]) =
+     let (l, r) = hmacOf(Encoding.ASCII.GetBytes "Bitcoin seed") (fun () -> master)
+     new BIP32PrivKeyExt(new Org.BouncyCastle.Math.BigInteger(1, l), r)
+
+(**
+## [Electrum][3] Wallet
+Electrum style deterministic wallets. It requires the master public key
+[3]: https://electrum.org/
+*)
+type Electrum(mpub: byte[], group: int) =
+    let deriveExp index =
+        use ms = new MemoryStream()
+        use writer = new BinaryWriter(ms)
+        let prefix = sprintf "%d:%d:" index group
+        writer.Write(Encoding.ASCII.GetBytes prefix)
+        writer.Write(mpub)
+        ms.ToArray() |> dsha |> createBigInt
+    let masterPoint = ecDomain.Curve.CreatePoint(createBigInt(mpub.[0..31]), createBigInt(mpub.[32..]), true)
+    
+    member x.Derive(index: int) = ecDomain.G.Multiply(deriveExp index).Add(masterPoint)
+        
+(**
+## [Armory][4] Wallet
+Armory style deterministic wallets. It requires the public master key and the chain code
+[4]: https://bitcoinarmory.com/
+*)
+type Armory(chain: byte[]) =
+    let derive (pkey: byte[]) =
+        let point = ecDomain.Curve.DecodePoint pkey
+        let pkeyUnc = new FpPoint(ecDomain.Curve, point.X, point.Y, false)
+        let chainMod = dsha (pkeyUnc.GetEncoded())
+        let chain2 = 
+            Array.map2 (fun a b -> a ^^^ b)
+                chain chainMod
+        let exp = createBigInt chain2
+        point.Multiply exp
+
+    member x.Derive pk = derive pk
+
+(*** hide ***)
+let electrumHashes (mpk: byte[]) (cReceive: int) (cChange: int) = 
+    let electrumReceive = new Electrum(mpk, 0)
+    let electrumChange = new Electrum(mpk, 1)
+    let derive (electrumWallet: Electrum) (c: int) = 
+        seq {
+            for i in 0..c-1 do
+            let pubKey = electrumWallet.Derive(i).GetEncoded() 
+            yield pubKey |> hash160
+        }
+    [derive electrumReceive cReceive; derive electrumChange cChange] |> Seq.concat
+
+let armoryHashes (mpk: byte[]) (c: int) = 
+    let armory = new Armory(mpk.[33..])
+    let addresses = 
+        Protocol.iterate (fun (pk: byte[]) ->
+            (armory.Derive pk).GetEncoded()
+        ) mpk.[0..32] |> Seq.map hash160
+
+    addresses |> Seq.skip 1 |> Seq.take c
+
+let bip32Hashes (mpk: byte[]) (chain: byte[]) (isReceived: bool) (c: int) = 
+    let publicKeyExt = (new BIP32PublicExt(ecDomain.Curve.DecodePoint(mpk), chain)).ToPublicChild(if isReceived then 0 else 1)
+
+    seq { 
+        for i in 0..c-1 do
+            yield publicKeyExt.ToPublicChild(i).ToPublic().GetEncoded() |> hash160
+}
+
+(* ------------------------------------------------------------------------
+This file is part of fszmq.
+This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+------------------------------------------------------------------------ *)
+
+/// Provides a memory-managed wrapper over ZMQ message operations
+[<Sealed>]
+type Message private(?source:byte array) =
+  let mutable disposed  = false
+  let mutable handle    = Marshal.AllocHGlobal(ZMQ.ZMQ_MSG_T_SIZE)
+
+  let (|Source|_|) = function
+    | None
+    | Some null ->  None
+    | Some data ->  let size = (Array.length >> unativeint) data Some(size,data)
+
+    match source with
+    | Source(size,data) ->  if C.zmq_msg_init_size(handle,size) <> 0 then ZMQ.error() Marshal.Copy(data,0,C.zmq_msg_data(handle),int size)
+    | _                 ->  if C.zmq_msg_init(handle) <> 0 then ZMQ.error()
+
+  /// Creates a new Message from the given byte array
+  new (source) = new Message (?source=Some source)
+
+  /// Creates a new empty Message
+  new () = new Message (?source=None)
+
+  /// For internal use only
+  member __.Handle :nativeint = handle
+
+  override this.GetHashCode () = hash this.Handle
+
+  override this.Equals (obj) =
+    match obj with
+    | :? Message as that -> this.Handle = that.Handle
+    | _                  -> invalidArg "obj" "Argument is not of type Message"
+
+  override this.ToString () = sprintf "Message(%i)" this.Handle 
+
+  override __.Finalize() =
+    if not disposed then
+      disposed <- true
+      let okay = C.zmq_msg_close(handle)
+      Marshal.FreeHGlobal(handle)
+      handle <- 0n
+      assert (okay = 0)
+
+  interface IDisposable with
+
+    member self.Dispose() =
+      self.Finalize()
+      GC.SuppressFinalize(self)
+
+
+/// An abstraction of an asynchronous message queue,
+/// with the exact queuing and message-exchange
+/// semantics determined by the socket type
+[<Sealed>]
+type Socket internal(context,socketType) =
+  let mutable disposed  = false
+  let mutable handle    = C.zmq_socket(context,socketType)
+
+  if handle = 0n then 
+      ZMQ.error()
+
+  /// For internal use only
+  member __.Handle :nativeint = handle
+
+  override this.GetHashCode () = hash this.Handle
+
+  override this.Equals (obj) =
+    match obj with
+    | :? Socket as that -> this.Handle = that.Handle
+    | _                 -> invalidArg "obj" "Argument is not of type Socket"
+
+  override this.ToString () = sprintf "Socket(%i)" this.Handle 
+
+  override __.Finalize() =
+    if not disposed then
+      disposed <- true
+      let okay = C.zmq_close(handle)
+      handle <- 0n
+      assert (okay = 0)
+
+  interface IDisposable with
+
+    member self.Dispose() =
+      self.Finalize()
+      GC.SuppressFinalize(self)
+
+
+/// Represents the container for a group of sockets in a node
+[<Sealed>]
+type Context private (__) = 
+  (* ^^^ HACK: used to work around an XMLDoc bug ^^^ *)
+  let mutable disposed  = false
+  let mutable handle    = C.zmq_ctx_new()
+
+  let locker  = obj () // used to synchronize access to `sockets`
+  let sockets = ResizeArray<Socket> ()
+
+  if handle = 0n then 
+      ZMQ.error()
+
+  let closeSockets () =
+    useBuffer sizeof<Int32> (fun (size,buffer) ->
+      writeInt32 ZMQ.NO_LINGER buffer
+      while sockets.Count > 0 do
+        let socket = sockets.Item 0
+        sockets.RemoveAt 0
+        if socket.Handle <> 0n then
+          // only clean-up sockets which haven't already been closed
+          let okay = C.zmq_setsockopt(socket.Handle,ZMQ.LINGER,buffer,size)
+          assert (okay = 0)
+          (socket :> IDisposable).Dispose ())
+  
+  let rec terminate () =
+    match C.zmq_ctx_term(handle) with
+    | 0 ->  handle <- 0n
+    | _ -> 
+            
+  /// Initializes a new Context instance
+  new () = new Context (null)
+
+  member internal __.Attach (socket) =
+    lock locker (fun () -> if not (sockets.Contains socket) then sockets.Add socket)
+
+  /// For internal use only
+  member __.Handle :nativeint = handle
+
+  override this.GetHashCode () = hash this.Handle
+
+  override this.Equals (obj) =
+    match obj with
+    | :? Context as that -> this.Handle = that.Handle
+    | _                  -> invalidArg "obj" "Argument is not of type Context"
+
+  override this.ToString () = sprintf "Context(%i)" this.Handle 
+
+  override __.Finalize() =
+    if not disposed then
+      disposed <- true
+      lock locker (fun () -> closeSockets ())
+      let okay = C.zmq_ctx_shutdown(handle)
+      assert (okay = 0)
+      terminate ()
+      
+  interface IDisposable with
+
+    member self.Dispose() =
+      self.Finalize()
+GC.SuppressFinalize(self)

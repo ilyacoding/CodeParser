@@ -1,82 +1,9 @@
-// Learn more about F# at http://fsharp.org
-// See the 'F# Tutorial' project for more help.
-(*[<EntryPoint>]
-let main argv = 
-    printfn "%A" argv
-    let x = 5 
-    if x<3 then
-        printfn "ddd"
-        printfn "ddda"
-    match personName with
-    | FirstOnly(firstName) -> printf "May I call you %s?" firstName
-    | LastOnly(lastName) -> printf "Are you Mr. or Ms. %s?" lastName
-    | FirstLast(firstName, lastName) -> printf "Are you %s %s?" firstName lastName
-    if x > 3 then 
-        printfn "good" 
-        for i = 1 to 10 do
-         printfn "GG"
-        if x < 9 then 
-            printfn "goooood"
-    if x > 3 then 
-        printfn "good" 
-        if x < 5 then
-            if x < 7 then
-                if x < 5 then
-                    printfn "NOT"
-                    printfn "NOT"
-                    printfn "NOT"
-                    printfn "NOT"
-                    printfn "NOT"
-                    printfn "NOT"
-                    printfn "NOT"
-                    printfn "NOT"
-                    printfn "NOT"
-                    printfn "NOT"
-                    printfn "NOT"
-                    printfn "NOT"
-                elif x > 6 then
-                    printf "BLABLA"
-                    for i = 1 to 4 do
-                     if i < x then
-                      printf "DAS IST GOOD"
-                      if x > 190 then
-                                 printfn "GGVLD"
-                                 for i 1.100 do
-                                     abs 10
-        if x < 9 then 
-            printfn "goooood"
-            if x > 8 then
-                printfn "ggg"
-            if x < 9 then
-                printfn "asdasd"
-            if x > 10 then
-                printfn "good"
-            elif x < 7 then
-                  printf "BLA"
-            elif x < 7 then
-                    printf "BLA"
-            elif x < 7 then
-                    printf "BLA"
-            elif x < 7 then
-                    printf "BLA"
-    printfn "bad"
-    System.Console.ReadKey(true) |> ignore 
-    0 // return an integer exit code
-	
-[<EntryPoint>]
-let main argv = 
-    let mutable x = 10;
-    if x > 5 then
-        x <- x - 3
-    printf "%d" x
-    System.Console.ReadKey(true) |> ignore
-    0 *)
-
 open System
 [<EntryPoint>]
+
 let main argv = 
     let line = Console.ReadLine()
-   (* let mutable i = 0.0
+    let mutable i = 0.0
     let mutable x = 0
     let mutable len = 0
     len <- line.Length
@@ -86,11 +13,15 @@ let main argv =
     | 3 -> x <- 30
     | _ -> x <- 40
     printfn "%d" x
-    if x > 10 then
-        printfn("bolshe desyati")
-    else*)
-        printfn("menshe")
-    if x > 10 then
+    if x = 10 then
+        printfn("X will be ten")
+    elif x = 20 then
+        printfn("X will be twenty")
+    elif x = 30 then
+        printfn("X will be thirty")
+    else
+        printfn("X will be fourty")
+    if x = 10 then
         i <- -2.0
         while i <= 2.0 do 
             let mutable rez = 0.0
@@ -102,7 +33,7 @@ let main argv =
                 rez <- sin(i) + i * cos(i)
             printfn " %f %f" i rez
             i <- i + 0.2
-  (* else
+    if x = 20 then
         i <- -1.0
         while i <= 3.0 do
             let mutable rez = 0.0
@@ -114,6 +45,21 @@ let main argv =
                 rez <- 1.0
             printfn "%f %f" i rez
             i <- i + 0.25
-    //printf "%d" x*)
+    elif x = 30 then
+        let mutable A = 0
+        let mutable B = 10
+        let mutable rez = 0
+        i <- 0.0
+        while i < 10.0 do
+            rez <- A * B
+            printfn "%d" rez
+            A <- A + 1
+            B <- B + 1
+            i <- i + 1.0
+    elif x = 40 then
+        if x <> 50 then
+            if x = 40 then
+                printfn("GoodWork")
+    //printf "%d" x
     System.Console.ReadKey(true) |> ignore
-    0 
+    0

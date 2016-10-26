@@ -8,6 +8,7 @@
 #include "vector"
 #include <algorithm> 
 #include <functional> 
+#include <sstream>
 #include <cctype>
 #include <locale>
 //#include "boost/algorithm/string.hpp"
@@ -33,7 +34,7 @@ static inline std::string &trim(std::string &s) {
 
 using namespace std;
 
-vector <string> s, l, op, opCond;
+vector <string> s, l, op, opCond, vars;
 int OperatorsUsed = 0, CLI = 0, CL = 0, cl = 0;
 
 void InitLexems()
@@ -70,6 +71,11 @@ void InitLexems()
 	op.push_back("printfn");
 	op.push_back("printf");
 	op.push_back("sprintf");
+	
+	op.push_back("member");
+	op.push_back("override");
+	op.push_back("lock");
+	op.push_back("type");
 
 	/*op.push_back("abs");
 	op.push_back("ceil");
@@ -87,15 +93,26 @@ void InitLexems()
 	op.push_back("for");
 	op.push_back("while");
 	op.push_back("if");
+	op.push_back("elif");
 	op.push_back("assert");
 	op.push_back("match");
+	op.push_back("|");
 
 	opCond.push_back("for");
 	opCond.push_back("while");
 	opCond.push_back("if");
+	opCond.push_back("elif");
 	opCond.push_back("assert");
 	opCond.push_back("match");
 	opCond.push_back("|");
+}
+
+string IntToStr(int val)
+{
+	stringstream ss;
+	ss << val;
+
+	return ss.str();
 }
 
 int CountLeftSpaces(string str) 
@@ -195,8 +212,7 @@ void GetLexems()
 	for (int i = 0; i < s.size() - 1; i++)
 	{
 		string buf = "";
-		string str;
-		str = s[i];
+		string str = s[i];
 		//str = boost::algorithm::trim_copy(s[i]);
 		trim(str);
 
@@ -219,6 +235,7 @@ void GetLexems()
 			}
 			if (isalpha(str[j]) || isdigit(str[j])) j--;
 		}
+		l.push_back(";");
 	}
 }
 
@@ -238,11 +255,13 @@ int IsCondLexem(string str)
 	return 0;
 }
 
-void CalcDepth(int CurrLine, int CurrLvl)
+void ProcessVars(int CurrLine, int CurrLvl)
 {
 	int CurrSpaces = (CountLeftSpaces(s[CurrLine]));
 	int PredSpaces = 0;
 	int CurrLvlEnter = CurrLvl;
+	bool CountElif = false;
+
 	vector <int> q;
 	vector <int> qS;
 
@@ -277,17 +296,117 @@ void CalcDepth(int CurrLine, int CurrLvl)
 			q.push_back(i);
 			if (s[i - 1].find("elif ", 0) != string::npos) {
 				qS.push_back(++CurrLvlEnter);
-				cout << "FOUND ELIF" << CurrLvlEnter << endl;
+				//s[i] += IntToStr(CurrLvlEnter);
+				//CountElif = true;
+				//cout << "FOUND ELIF" << CurrLvlEnter << ":" << i << endl;
 				if (CurrLvlEnter > CLI) {
 					CLI = CurrLvlEnter;
 				}
 			}
+			else if ((s[i - 1].find("else", 0) != string::npos) && (CurrLvlEnter > CurrLvl)) {
+				qS.push_back(++CurrLvlEnter);
+				//s[i] += IntToStr(CurrLvlEnter);
+				if (CurrLvlEnter > CLI) {
+					CLI = CurrLvlEnter;
+				}
+				CurrLvlEnter = CurrLvl;
+			}
 			else {
-				qS.push_back(CurrLvlEnter);
+				CurrLvlEnter = CurrLvl;
+				//s[i] += IntToStr(CurrLvlEnter);
+				qS.push_back(CurrLvl);
 			}
 		}
 		PredSpaces = CountLeftSpaces(s[i]);
 	}
+
+	/*cout << endl << "===" << endl;
+	cout << "LEVEL: " << CurrLvl << endl;
+	for (int i = 0; i < q.size(); i++) {
+	cout << "Q: " << q[i] << "; QS: " << qS[i] << "|";
+	}
+
+	if (q.size() == 0)
+	cout << "EMPTY Q";
+	cout << endl << "===" << endl;*/
+
+	for (int i = 0; i < q.size(); i++) {
+		CalcDepth(q[i], qS[i] + 1);
+	}
+}
+
+void CalcDepth(int CurrLine, int CurrLvl)
+{
+	int CurrSpaces = (CountLeftSpaces(s[CurrLine]));
+	int PredSpaces = 0;
+	int CurrLvlEnter = CurrLvl;
+	bool CountElif = false;
+
+	vector <int> q;
+	vector <int> qS;
+
+	for (int i = CurrLine; i < s.size(); i++) {
+		// Process
+		if (s[i].find("match", 0) != string::npos) {
+			int CountCase = 0;
+			i++;
+			string str = "";
+			str = s[i];
+			//while (boost::algorithm::trim_copy(s[i])[0] == '|') {
+			while (trim(str)[0] == '|') {
+				CountCase++;
+				//i++;
+				str = s[++i];
+			}
+			if (CurrLvl + CountCase - 2 > CLI) {
+				CLI = CurrLvl + CountCase - 2;
+			}
+		}
+
+		if (((s[i].find("if ", 0) != string::npos) || (s[i].find("assert ", 0) != string::npos) || (s[i].find("for ", 0) != string::npos) || (s[i].find("while ", 0) != string::npos)) && (CountLeftSpaces(s[i]) == CurrSpaces)) {
+			if (CurrLvl > CLI) {
+				CLI = CurrLvl;
+			}
+		}
+		// Process
+
+		if ((CountLeftSpaces(s[i]) < CurrSpaces) || (i == s.size() - 1)) {
+			break;
+		} else if ((CountLeftSpaces(s[i]) > CurrSpaces) && (PredSpaces == CurrSpaces)) {
+			q.push_back(i);
+			if (s[i - 1].find("elif ", 0) != string::npos) {
+				qS.push_back(++CurrLvlEnter);
+				//s[i] += IntToStr(CurrLvlEnter);
+				//CountElif = true;
+				//cout << "FOUND ELIF" << CurrLvlEnter << ":" << i << endl;
+				if (CurrLvlEnter > CLI) {
+					CLI = CurrLvlEnter;
+				}
+			} else if ((s[i - 1].find("else", 0) != string::npos) && (CurrLvlEnter > CurrLvl)) {
+				qS.push_back(++CurrLvlEnter);
+				//s[i] += IntToStr(CurrLvlEnter);
+				if (CurrLvlEnter > CLI) {
+					CLI = CurrLvlEnter;
+				}
+				CurrLvlEnter = CurrLvl;
+			} else {
+				CurrLvlEnter = CurrLvl;
+				//s[i] += IntToStr(CurrLvlEnter);
+				qS.push_back(CurrLvl);
+			}
+		}
+		PredSpaces = CountLeftSpaces(s[i]);
+	}
+
+	/*cout << endl << "===" << endl;
+	cout << "LEVEL: " << CurrLvl << endl;
+	for (int i = 0; i < q.size(); i++) {
+		cout << "Q: " << q[i] << "; QS: " << qS[i] << "|";
+	}
+
+	if (q.size() == 0)
+		cout << "EMPTY Q";
+	cout << endl << "===" << endl;*/
 
 	for (int i = 0; i < q.size(); i++) {
 		CalcDepth(q[i], qS[i] + 1);
@@ -307,33 +426,44 @@ int main()
 	string str = "";
 	file.open("Program.fs", ios_base::in);
 	file.imbue(std::locale(""));
+	
 	while (!file.eof()) {
 		file.getline(buf, 500);
 		s.push_back(buf);
 	}
+
 	file.close();
 
 	DeleteComments();
 	DeleteStrings();
 	EraseEmptyStrings();
 
-	cout  << "==================== CODE ====================" << endl;
+
+
+	GetLexems();
+	GetVars();
+	CalcDepth(0, 0);
+
+	cout << "==================== CODE ====================" << endl;
 	for (int i = 0; i < s.size(); i++)
 		cout << s[i] << endl;
 	cout << "==================== /CODE ====================" << endl;
 
-	GetLexems();
-	CalcDepth(0, 0);
-
-	
-
 	for (int i = 0; i < l.size() - 1; i++)
 	{
-		cout << l[i] << ":" << IsLexem(l[i]) << ":" << IsCondLexem(l[i]) << endl;
+		//cout << l[i] << ":" << IsLexem(l[i]) << ":" << IsCondLexem(l[i]) << endl;
 		CL += IsLexem(l[i]);
 		cl += IsCondLexem(l[i]);
 	}
 	
+	for (int i = 0; i < s.size(); i++) {
+		cout << s[i] << endl;
+	}
+
+	for (int i = 0; i < vars.size(); i++) {
+		cout << vars[i] << " _ ";
+	}
+
 	cout << endl << "==================== RESULT ====================" << endl;
 	cout.precision(2);
 	cout << "CL: " << CL << endl;
