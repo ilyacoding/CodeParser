@@ -32,7 +32,7 @@ let main argv =
             if (i <= 0.0) && (i >= -2.0) then
                 rez <- sin(i) + i * cos(i)
             printfn " %f %f" i rez
-            i <- i + 0.2
+            i <- i + 0.2*)
     if x = 20 then
         i <- -1.0
         while i <= 3.0 do
@@ -62,4 +62,13 @@ let main argv =
                 printfn("GoodWork")
     //printf "%d" x
     System.Console.ReadKey(true) |> ignore
+    	(*
+	0if x = 20
+		1...
+	0else
+		1if x = 30
+			2...
+		1else
+			2if x <> 50
+		//		3if x = 40*)
     0

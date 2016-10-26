@@ -335,7 +335,8 @@ void ProcessVars(int CurrLine, int CurrLvl)
 	}
 }
 
-void CalcDepth(int CurrLine, int CurrLvl)
+/*
+void CalcDepthOLD(int CurrLine, int CurrLvl)
 {
 	int CurrSpaces = (CountLeftSpaces(s[CurrLine]));
 	int PredSpaces = 0;
@@ -398,7 +399,7 @@ void CalcDepth(int CurrLine, int CurrLvl)
 		PredSpaces = CountLeftSpaces(s[i]);
 	}
 
-	/*cout << endl << "===" << endl;
+	cout << endl << "===" << endl;
 	cout << "LEVEL: " << CurrLvl << endl;
 	for (int i = 0; i < q.size(); i++) {
 		cout << "Q: " << q[i] << "; QS: " << qS[i] << "|";
@@ -406,13 +407,131 @@ void CalcDepth(int CurrLine, int CurrLvl)
 
 	if (q.size() == 0)
 		cout << "EMPTY Q";
-	cout << endl << "===" << endl;*/
-
+	cout << endl << "===" << endl;
+	
 	for (int i = 0; i < q.size(); i++) {
 		CalcDepth(q[i], qS[i] + 1);
 	}
+}*/
+
+void MaxCLI(int val)
+{
+	if (val > CLI)
+		CLI = val;
+}
+
+void CalcDepth(int CurrLine, int CurrLvl)
+{
+	// CurrLvl = now the max cond depth
+	int CurrSpaces = (CountLeftSpaces(s[CurrLine])); // Normal spaces on current lvl
+	int PredSpaces = 0;
+	int CurrLvlEnter = CurrLvl;
+	bool CountElif = false;
+
+	vector <int> q;
+	vector <int> qS;
+
+	// Где есть переходы на след уровни
+	for (int i = CurrLine; i < s.size() - 1; i++) {
+		if (CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine])) {
+			q.push_back(i);
+			while ((CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine])) && (i < s.size() - 1)) i++;
+		}
+		PredSpaces = CountLeftSpaces(s[i]);
+	}
+
+	for (int i = CurrLine; i < s.size(); i++) {
+		if (s[i].find("match", 0) != string::npos) {
+			int CountCase = 0;
+			i++;
+			string str = s[i];
+			while (trim(str)[0] == '|') {
+				CountCase++;
+				str = s[++i];
+			}
+			MaxCLI(CurrLvl + CountCase - 2);
+			CurrLvlEnter = CurrLvl;
+			cout << "MATCH" << endl;
+		}
+	}
+
+	for (int i = 0; i < q.size(); i++) {
+		int Line = q[i] - 1;
+		if ((s[Line].find("if", 0) != string::npos) && (s[Line].find("elif", 0) == string::npos)) {
+			CurrLvlEnter = CurrLvl;
+			MaxCLI(CurrLvlEnter++);
+			qS.push_back(CurrLvlEnter);
+			cout << "IF" << endl;
+		} else if (s[Line].find("while", 0) != string::npos) {
+			CurrLvlEnter = CurrLvl;
+			MaxCLI(CurrLvlEnter++);
+			qS.push_back(CurrLvlEnter - 1);
+			cout << "WHILE" << endl;
+		} else if (s[Line].find("for", 0) != string::npos) {
+			CurrLvlEnter = CurrLvl;
+			MaxCLI(CurrLvlEnter++);
+			qS.push_back(CurrLvlEnter - 1);
+			cout << "FOR" << endl;
+		} else if (s[Line].find("elif", 0) != string::npos) {
+			MaxCLI(CurrLvlEnter++);
+			qS.push_back(CurrLvlEnter - 1);
+			cout << "ELIF" << endl;
+		} else if (s[Line].find("else", 0) != string::npos) {
+			CurrLvlEnter = CurrLvl;
+			MaxCLI(CurrLvlEnter);
+			qS.push_back(CurrLvlEnter - 1);
+			cout << "ELSE" << endl;
+		} else {
+			CurrLvlEnter = CurrLvl;
+			qS.push_back(CurrLvl);
+			cout << "FUNC" << endl;
+		}
+
+	}
+
+	/*
 
 
+		if ((s[i].find("if", 0) != string::npos) && (s[i].find("elif", 0) == string::npos)) {
+			q.push_back(++i);
+			qS.push_back(CurrLvlEnter + 1);
+			MaxCLI(CurrLvlEnter++);
+		}
+
+		if (s[i].find("elif", 0) != string::npos) {
+			q.push_back(++i);
+			qS.push_back(CurrLvlEnter + 1);
+			MaxCLI(CurrLvlEnter++);
+		}
+
+		if (s[i].find("else", 0) != string::npos) {
+			q.push_back(++i);
+			CurrLvlEnter = CurrLvl;
+			qS.push_back(CurrLvlEnter + 1);
+			MaxCLI(CurrLvlEnter++);
+		}
+
+		//while ((CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine])) && (i < s.size() - 1)) i++;
+		if ((CountLeftSpaces(s[i]) < CountLeftSpaces(s[CurrLine])) || (i >= s.size() - 1)) break;
+
+		//(s[i].find("match", 0) != string::npos)
+		PredSpaces = CountLeftSpaces(s[i]);
+	}*/
+
+	
+	cout << endl << "===" << endl;
+	cout << "LEVEL: " << CurrLvl << endl;
+	for (int i = 0; i < q.size(); i++) {
+	cout << "Q: " << q[i] << "; QS: " << qS[i] << "|";
+	}
+
+	if (q.size() == 0)
+	cout << "EMPTY Q";
+	cout << endl << "===" << endl;
+	
+	for (int i = 0; i < q.size(); i++) {
+		CalcDepth(q[i], qS[i]);
+	}
 }
 
 int main()
