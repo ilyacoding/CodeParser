@@ -426,18 +426,16 @@ void CalcDepth(int CurrLine, int CurrLvl)
 	int CurrSpaces = (CountLeftSpaces(s[CurrLine])); // Normal spaces on current lvl
 	int PredSpaces = 0;
 	int CurrLvlEnter = CurrLvl;
-	bool CountElif = false;
 
 	vector <int> q;
 	vector <int> qS;
 
 	// Где есть переходы на след уровни
 	for (int i = CurrLine; i < s.size() - 1; i++) {
-		if (CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine])) {
+		if (CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine])) 
 			q.push_back(i);
-			while ((CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine])) && (i < s.size() - 1)) i++;
-		}
-		PredSpaces = CountLeftSpaces(s[i]);
+		while ((CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine])) && (i < (s.size() - 1))) i++;
+		if (CountLeftSpaces(s[i]) < CountLeftSpaces(s[CurrLine])) break;
 	}
 
 	for (int i = CurrLine; i < s.size(); i++) {
@@ -461,30 +459,31 @@ void CalcDepth(int CurrLine, int CurrLvl)
 			CurrLvlEnter = CurrLvl;
 			MaxCLI(CurrLvlEnter++);
 			qS.push_back(CurrLvlEnter);
-			cout << "IF" << endl;
+			//cout << "IF" << endl;
 		} else if (s[Line].find("while", 0) != string::npos) {
 			CurrLvlEnter = CurrLvl;
 			MaxCLI(CurrLvlEnter++);
 			qS.push_back(CurrLvlEnter);
-			cout << "WHILE" << endl;
+			//cout << "WHILE" << endl;
 		} else if (s[Line].find("for", 0) != string::npos) {
 			CurrLvlEnter = CurrLvl;
 			MaxCLI(CurrLvlEnter++);
 			qS.push_back(CurrLvlEnter);
-			cout << "FOR" << endl;
+			//cout << "FOR" << endl;
 		} else if (s[Line].find("elif", 0) != string::npos) {
-			MaxCLI(CurrLvlEnter++);
+			//if (ProcessElif) 
+				MaxCLI(CurrLvlEnter++);
 			qS.push_back(CurrLvlEnter);
-			cout << "ELIF" << endl;
+			//cout << "ELIF" << endl;
 		} else if (s[Line].find("else", 0) != string::npos) {
-			CurrLvlEnter = CurrLvl;
-			MaxCLI(CurrLvlEnter);
+			MaxCLI(CurrLvlEnter - 1);
 			qS.push_back(CurrLvlEnter);
-			cout << "ELSE" << endl;
+			CurrLvlEnter = CurrLvl;
+			//cout << "ELSE" << endl;
 		} else {
 			CurrLvlEnter = CurrLvl;
 			qS.push_back(CurrLvl);
-			cout << "FUNC" << endl;
+			//cout << "FUNC" << endl;
 		}
 
 	}
@@ -522,12 +521,11 @@ void CalcDepth(int CurrLine, int CurrLvl)
 	cout << endl << "===" << endl;
 	cout << "LEVEL: " << CurrLvl << endl;
 	for (int i = 0; i < q.size(); i++) {
-	cout << "Q: " << q[i] << "; QS: " << qS[i] << "|";
+		cout << "Q: " << q[i] << "; CLI: " << qS[i] << "|";
 	}
 
 	if (q.size() == 0)
-	cout << "EMPTY Q";
-	cout << endl << "===" << endl;
+		cout << "EMPTY Q";
 	
 	for (int i = 0; i < q.size(); i++) {
 		CalcDepth(q[i], qS[i]);
@@ -538,7 +536,6 @@ int main()
 {
 	setlocale(LC_ALL, "rus");
 	InitLexems();
-
 	ifstream file;
 	int CondLexems = 0;
 	char buf[500];
@@ -563,10 +560,10 @@ int main()
 	//();
 	CalcDepth(0, 0);
 
-	cout << "==================== CODE ====================" << endl;
-	for (int i = 0; i < s.size(); i++)
-		cout << s[i] << endl;
-	cout << "==================== /CODE ====================" << endl;
+	//cout << "==================== CODE ====================" << endl;
+	//for (int i = 0; i < s.size(); i++)
+	//	cout << s[i] << endl;
+	//cout << "==================== /CODE ====================" << endl;
 
 	for (int i = 0; i < l.size() - 1; i++)
 	{
@@ -575,10 +572,6 @@ int main()
 		cl += IsCondLexem(l[i]);
 	}
 	
-	for (int i = 0; i < s.size(); i++) {
-		cout << s[i] << endl;
-	}
-
 	for (int i = 0; i < vars.size(); i++) {
 		cout << vars[i] << " _ ";
 	}

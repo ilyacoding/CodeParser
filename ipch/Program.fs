@@ -1,24 +1,40 @@
 open System
 [<EntryPoint>]
+
 let main argv = 
     let line = Console.ReadLine()
     let mutable i = 0.0
     let mutable x = 0
     let mutable len = 0
     len <- line.Length
-    printfn "%d" x  
+    match len with
+    | 1 -> x <- 10
+    | 2 -> x <- 20
+    | 3 -> x <- 30
+    | _ -> x <- 40
+    printfn "%d" x
     if x = 10 then
         printfn("X will be ten")
     elif x = 20 then
         printfn("X will be twenty")
     elif x = 30 then
         printfn("X will be thirty")
-    elif x = 30 then
-        printfn("X will be thirty")
     else
-        printfn("X will be fourty")	
+        printfn("X will be fourty")
+    if x = 10 then
+        i <- -2.0
+        while i <= 2.0 do 
+            let mutable rez = 0.0
+            if (i <= 2.0) && (i > 1.0) then
+                rez <- exp(i)
+            if (i <= 1.0) && (i > 0.0) then
+                rez <- log(i)
+            if (i <= 0.0) && (i >= -2.0) then
+                rez <- sin(i) + i * cos(i)
+            printfn " %f %f" i rez
+            i <- i + 0.2*)
     if x = 20 then
-        1i <- -1.0
+        i <- -1.0
         while i <= 3.0 do
             let mutable rez = 0.0
             if (i <= 3.0) && (i > 1.0) then
@@ -33,18 +49,6 @@ let main argv =
         let mutable A = 0
         let mutable B = 10
         let mutable rez = 0
-        if A = 30 then
-            let B = 40
-        elif A = 50 then
-            if B = 30 then
-                let C = 60
-            elif B = 40 then
-                let C = 70
-            elif B = 50 then
-                if D = 5 then
-                    printfn ("good")
-                else
-                    printfn("bad")
         i <- 0.0
         while i < 10.0 do
             rez <- A * B
@@ -61,10 +65,12 @@ let main argv =
     	(*
 	0if x = 20
 		1...
-	0else
+	0else 
 		1if x = 30
 			2...
 		1else
-			2if x <> 50
-		//		3if x = 40*)
-    0
+			2if x = 40
+				3if x <> 50
+					4if x = 40
+		*)
+    
