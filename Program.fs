@@ -65,10 +65,12 @@ let main argv =
     	(*
 	0if x = 20
 		1...
-	0else
+	0else 
 		1if x = 30
 			2...
 		1else
-			2if x <> 50
-		//		3if x = 40*)
-    0
+			2if x = 40
+				3if x <> 50
+					4if x = 40
+		*)
+    

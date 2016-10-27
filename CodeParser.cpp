@@ -465,21 +465,21 @@ void CalcDepth(int CurrLine, int CurrLvl)
 		} else if (s[Line].find("while", 0) != string::npos) {
 			CurrLvlEnter = CurrLvl;
 			MaxCLI(CurrLvlEnter++);
-			qS.push_back(CurrLvlEnter - 1);
+			qS.push_back(CurrLvlEnter);
 			cout << "WHILE" << endl;
 		} else if (s[Line].find("for", 0) != string::npos) {
 			CurrLvlEnter = CurrLvl;
 			MaxCLI(CurrLvlEnter++);
-			qS.push_back(CurrLvlEnter - 1);
+			qS.push_back(CurrLvlEnter);
 			cout << "FOR" << endl;
 		} else if (s[Line].find("elif", 0) != string::npos) {
 			MaxCLI(CurrLvlEnter++);
-			qS.push_back(CurrLvlEnter - 1);
+			qS.push_back(CurrLvlEnter);
 			cout << "ELIF" << endl;
 		} else if (s[Line].find("else", 0) != string::npos) {
 			CurrLvlEnter = CurrLvl;
 			MaxCLI(CurrLvlEnter);
-			qS.push_back(CurrLvlEnter - 1);
+			qS.push_back(CurrLvlEnter);
 			cout << "ELSE" << endl;
 		} else {
 			CurrLvlEnter = CurrLvl;
