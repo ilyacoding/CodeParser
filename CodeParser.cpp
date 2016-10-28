@@ -102,7 +102,6 @@ void InitLexems()
 	opCond.push_back("while");
 	opCond.push_back("if");
 	opCond.push_back("elif");
-	opCond.push_back("assert");
 	opCond.push_back("match");
 	opCond.push_back("|");
 }
@@ -447,9 +446,27 @@ void CalcDepth(int CurrLine, int CurrLvl)
 				CountCase++;
 				str = s[++i];
 			}
-			MaxCLI(CurrLvl + CountCase - 2);
+
+			/*if (CountCase == 1 || CountCase == 2) {
+				CountCase = 0;
+			} else if (CountCase == 3) {
+				CountCase = 1;
+			} else {
+				CountCase -= 2;
+			}
+			if (CurrLvl > 0) {
+				CountCase--;
+			}*/
+			if (CountCase == 1 || CountCase == 2) {
+				CountCase = 1;
+				if (CurrLvl > 0)
+					CountCase--;
+			} else {
+				CountCase -= 2;
+			}
+			MaxCLI(CurrLvl + CountCase);
 			CurrLvlEnter = CurrLvl;
-			cout << "MATCH" << endl;
+			//cout << "MATCH" << endl;
 		}
 	}
 
@@ -487,45 +504,15 @@ void CalcDepth(int CurrLine, int CurrLvl)
 		}
 
 	}
-
-	/*
-
-
-		if ((s[i].find("if", 0) != string::npos) && (s[i].find("elif", 0) == string::npos)) {
-			q.push_back(++i);
-			qS.push_back(CurrLvlEnter + 1);
-			MaxCLI(CurrLvlEnter++);
-		}
-
-		if (s[i].find("elif", 0) != string::npos) {
-			q.push_back(++i);
-			qS.push_back(CurrLvlEnter + 1);
-			MaxCLI(CurrLvlEnter++);
-		}
-
-		if (s[i].find("else", 0) != string::npos) {
-			q.push_back(++i);
-			CurrLvlEnter = CurrLvl;
-			qS.push_back(CurrLvlEnter + 1);
-			MaxCLI(CurrLvlEnter++);
-		}
-
-		//while ((CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine])) && (i < s.size() - 1)) i++;
-		if ((CountLeftSpaces(s[i]) < CountLeftSpaces(s[CurrLine])) || (i >= s.size() - 1)) break;
-
-		//(s[i].find("match", 0) != string::npos)
-		PredSpaces = CountLeftSpaces(s[i]);
-	}*/
-
 	
-	cout << endl << "===" << endl;
+	/*cout << endl << "===" << endl;
 	cout << "LEVEL: " << CurrLvl << endl;
 	for (int i = 0; i < q.size(); i++) {
 		cout << "Q: " << q[i] << "; CLI: " << qS[i] << "|";
 	}
 
 	if (q.size() == 0)
-		cout << "EMPTY Q";
+		cout << "EMPTY Q";*/
 	
 	for (int i = 0; i < q.size(); i++) {
 		CalcDepth(q[i], qS[i]);
@@ -540,7 +527,29 @@ int main()
 	int CondLexems = 0;
 	char buf[500];
 	string str = "";
-	file.open("Program.fs", ios_base::in);
+	char c;
+	string FileName;
+	cout << "a) ProgramBig " << endl
+	     << "b) ProgramTest " << endl
+	     << "c) ProgramBlock " << endl
+		 << "def: ProgramDebug " << endl << endl;
+	cout << "Select: ";
+	cin >> c;
+	switch (c) {
+		case 'a':
+			FileName = "ProgramBig";
+			break;
+		case 'b':
+			FileName = "ProgramTest";
+			break;
+		case 'c':
+			FileName = "ProgramBlock";
+			break;
+		default:
+			FileName = "ProgramDebug";
+			break;
+	}
+	file.open(("test/" + FileName + ".fs").c_str(), ios_base::in);
 	file.imbue(std::locale(""));
 	
 	while (!file.eof()) {
@@ -560,10 +569,10 @@ int main()
 	//();
 	CalcDepth(0, 0);
 
-	//cout << "==================== CODE ====================" << endl;
-	//for (int i = 0; i < s.size(); i++)
-	//	cout << s[i] << endl;
-	//cout << "==================== /CODE ====================" << endl;
+	cout << "==================== CODE ====================" << endl;
+	for (int i = 0; i < s.size(); i++)
+		cout << s[i] << endl;
+	cout << "==================== /CODE ====================" << endl;
 
 	for (int i = 0; i < l.size() - 1; i++)
 	{

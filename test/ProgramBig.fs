@@ -461,7 +461,6 @@ type Message private(?source:byte array) =
       let okay = C.zmq_msg_close(handle)
       Marshal.FreeHGlobal(handle)
       handle <- 0n
-      assert (okay = 0)
 
   interface IDisposable with
 
@@ -498,7 +497,6 @@ type Socket internal(context,socketType) =
       disposed <- true
       let okay = C.zmq_close(handle)
       handle <- 0n
-      assert (okay = 0)
 
   interface IDisposable with
 
@@ -529,7 +527,6 @@ type Context private (__) =
         if socket.Handle <> 0n then
           // only clean-up sockets which haven't already been closed
           let okay = C.zmq_setsockopt(socket.Handle,ZMQ.LINGER,buffer,size)
-          assert (okay = 0)
           (socket :> IDisposable).Dispose ())
   
   let rec terminate () =
@@ -560,7 +557,6 @@ type Context private (__) =
       disposed <- true
       lock locker (fun () -> closeSockets ())
       let okay = C.zmq_ctx_shutdown(handle)
-      assert (okay = 0)
       terminate ()
       
   interface IDisposable with

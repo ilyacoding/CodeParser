@@ -32,7 +32,7 @@ let main argv =
             if (i <= 0.0) && (i >= -2.0) then
                 rez <- sin(i) + i * cos(i)
             printfn " %f %f" i rez
-            i <- i + 0.2*)
+            i <- i + 0.2
     if x = 20 then
         i <- -1.0
         while i <= 3.0 do
@@ -49,18 +49,6 @@ let main argv =
         let mutable A = 0
         let mutable B = 10
         let mutable rez = 0
-        if A = 30 then
-            let B = 40
-        elif A = 50 then
-            if B = 30 then
-                let C = 60
-            elif B = 40 then
-                let C = 70
-            elif B = 50 then
-                if D = 5 then
-                    printfn ("good")
-                else
-                    printfn("bad")
         i <- 0.0
         while i < 10.0 do
             rez <- A * B
@@ -74,13 +62,4 @@ let main argv =
                 printfn("GoodWork")
     //printf "%d" x
     System.Console.ReadKey(true) |> ignore
-    	(*
-	0if x = 20
-		1...
-	0else
-		1if x = 30
-			2...
-		1else
-			2if x <> 50
-		//		3if x = 40*)
     0
