@@ -1,6 +1,5 @@
 open System
 [<EntryPoint>]
-
 let main argv = 
     let line = Console.ReadLine()
     let mutable i = 0.0

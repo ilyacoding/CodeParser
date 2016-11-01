@@ -34,8 +34,10 @@ static inline std::string &trim(std::string &s) {
 
 using namespace std;
 
-vector <string> s, l, op, opCond, vars;
-int OperatorsUsed = 0, CLI = 0, CL = 0, cl = 0;
+vector <string> s, l, types, op, opCond, opCondCheck, vars;
+int OperatorsUsed = 0;
+int CLI = 0, CL = 0, cl = 0;
+int p = 0, m = 0, c = 0, t = 0;
 
 void InitLexems()
 {
@@ -76,7 +78,6 @@ void InitLexems()
 	op.push_back("override");
 	op.push_back("lock");
 	op.push_back("type");
-
 	/*op.push_back("abs");
 	op.push_back("ceil");
 	op.push_back("exp");
@@ -89,7 +90,6 @@ void InitLexems()
 	op.push_back("sin");
 	op.push_back("tan");
 	op.push_back("pown");*/
-
 	op.push_back("for");
 	op.push_back("while");
 	op.push_back("if");
@@ -104,6 +104,32 @@ void InitLexems()
 	opCond.push_back("elif");
 	opCond.push_back("match");
 	opCond.push_back("|");
+
+	opCondCheck.push_back("for");
+	opCondCheck.push_back("while");
+	opCondCheck.push_back("if");
+	opCondCheck.push_back("elif");
+
+	types.push_back("let mutable");
+	types.push_back("let");
+	types.push_back("bool");
+	types.push_back("byte");
+	types.push_back("sbyte");
+	types.push_back("int16");
+	types.push_back("uint16");
+	types.push_back("int");
+	types.push_back("uint32");
+	types.push_back("int64");
+	types.push_back("uint64");
+	types.push_back("nativeint");
+	types.push_back("unativeint");
+	types.push_back("char");
+	types.push_back("string");
+	types.push_back("decimal");
+	types.push_back("float32");
+	types.push_back("single");
+	types.push_back("float");
+	types.push_back("double");
 }
 
 string IntToStr(int val)
@@ -254,169 +280,247 @@ int IsCondLexem(string str)
 	return 0;
 }
 
-void ProcessVars(int CurrLine, int CurrLvl)
+vector<string> GetStrLexems(string str)
 {
-	int CurrSpaces = (CountLeftSpaces(s[CurrLine]));
-	int PredSpaces = 0;
-	int CurrLvlEnter = CurrLvl;
-	bool CountElif = false;
+	string buf = "";
+	trim(str);
+	vector<string> lexems;
 
-	vector <int> q;
-	vector <int> qS;
-
-	for (int i = CurrLine; i < s.size(); i++) {
-		// Process
-		if (s[i].find("match", 0) != string::npos) {
-			int CountCase = 0;
-			i++;
-			string str = "";
-			str = s[i];
-			//while (boost::algorithm::trim_copy(s[i])[0] == '|') {
-			while (trim(str)[0] == '|') {
-				CountCase++;
-				//i++;
-				str = s[++i];
-			}
-			if (CurrLvl + CountCase - 2 > CLI) {
-				CLI = CurrLvl + CountCase - 2;
-			}
+	for (int j = 0; j < str.length(); j++)
+	{
+		while ((isalpha(str[j])/* || str[j] == '.'*/ || isdigit(str[j])) && (j < str.length())) buf += str[j++];
+		if (buf.length() > 0) {
+			trim(buf);
+			lexems.push_back(buf);
+			buf = "";
 		}
 
-		if (((s[i].find("if ", 0) != string::npos) || (s[i].find("assert ", 0) != string::npos) || (s[i].find("for ", 0) != string::npos) || (s[i].find("while ", 0) != string::npos)) && (CountLeftSpaces(s[i]) == CurrSpaces)) {
-			if (CurrLvl > CLI) {
-				CLI = CurrLvl;
-			}
+		while ((!isspace(str[j]) && !isalpha(str[j]) && !isdigit(str[j])) && (j < str.length())) buf += str[j++];
+		if (buf.length() > 0) {
+			trim(buf);
+			lexems.push_back(buf);
+			buf = "";
 		}
-		// Process
-
-		if ((CountLeftSpaces(s[i]) < CurrSpaces) || (i == s.size() - 1)) {
-			break;
-		} else if ((CountLeftSpaces(s[i]) > CurrSpaces) && (PredSpaces == CurrSpaces)) {
-			q.push_back(i);
-			if (s[i - 1].find("elif ", 0) != string::npos) {
-				qS.push_back(++CurrLvlEnter);
-				//s[i] += IntToStr(CurrLvlEnter);
-				//CountElif = true;
-				//cout << "FOUND ELIF" << CurrLvlEnter << ":" << i << endl;
-				if (CurrLvlEnter > CLI) {
-					CLI = CurrLvlEnter;
-				}
-			}
-			else if ((s[i - 1].find("else", 0) != string::npos) && (CurrLvlEnter > CurrLvl)) {
-				qS.push_back(++CurrLvlEnter);
-				//s[i] += IntToStr(CurrLvlEnter);
-				if (CurrLvlEnter > CLI) {
-					CLI = CurrLvlEnter;
-				}
-				CurrLvlEnter = CurrLvl;
-			}
-			else {
-				CurrLvlEnter = CurrLvl;
-				//s[i] += IntToStr(CurrLvlEnter);
-				qS.push_back(CurrLvl);
-			}
-		}
-		PredSpaces = CountLeftSpaces(s[i]);
+		if (isalpha(str[j]) || isdigit(str[j])) j--;
 	}
-
-	/*cout << endl << "===" << endl;
-	cout << "LEVEL: " << CurrLvl << endl;
-	for (int i = 0; i < q.size(); i++) {
-	cout << "Q: " << q[i] << "; QS: " << qS[i] << "|";
-	}
-
-	if (q.size() == 0)
-	cout << "EMPTY Q";
-	cout << endl << "===" << endl;*/
-
-	for (int i = 0; i < q.size(); i++) {
-		ProcessVars(q[i], qS[i] + 1);
-	}
+	lexems.push_back(";");
+	return lexems;
 }
 
-/*
-void CalcDepthOLD(int CurrLine, int CurrLvl)
+int IsConditionUsage(string str, string VarName)
 {
-	int CurrSpaces = (CountLeftSpaces(s[CurrLine]));
-	int PredSpaces = 0;
-	int CurrLvlEnter = CurrLvl;
-	bool CountElif = false;
+	trim(str);
+	trim(VarName);
+	auto lexems = GetStrLexems(str);
+	bool IsCond = false;
+	for (int i = 0; i < opCondCheck.size(); i++) 
+		if (opCondCheck[i] == lexems[0])
+			IsCond = true;
+	if (!IsCond) return 0;
 
-	vector <int> q;
-	vector <int> qS;
+	int counter = 0;
+	for (int i = 1; i < lexems.size(); i++)
+		if (lexems[i] == VarName)
+			counter++;
+	//cout << "<" << str << "_" << counter << ">" << endl;
+	return counter;
+}
 
-	for (int i = CurrLine; i < s.size(); i++) {
-		// Process
-		if (s[i].find("match", 0) != string::npos) {
-			int CountCase = 0;
-			i++;
-			string str = "";
-			str = s[i];
-			//while (boost::algorithm::trim_copy(s[i])[0] == '|') {
-			while (trim(str)[0] == '|') {
-				CountCase++;
-				//i++;
-				str = s[++i];
-			}
-			if (CurrLvl + CountCase - 2 > CLI) {
-				CLI = CurrLvl + CountCase - 2;
-			}
-		}
+int IsRightAssign(string str, string VarName)
+{
+	trim(str);
+	trim(VarName);
+	auto lexems = GetStrLexems(str);
+	int counter = 0, i = 0;
 
-		if (((s[i].find("if ", 0) != string::npos) || (s[i].find("assert ", 0) != string::npos) || (s[i].find("for ", 0) != string::npos) || (s[i].find("while ", 0) != string::npos)) && (CountLeftSpaces(s[i]) == CurrSpaces)) {
-			if (CurrLvl > CLI) {
-				CLI = CurrLvl;
-			}
-		}
-		// Process
+	bool IsAssign = false;
+	for (int i = 0; i < lexems.size(); i++) 
+		if (lexems[i] == "<-")
+			IsAssign = true;
+	if (!IsAssign) return counter;
 
-		if ((CountLeftSpaces(s[i]) < CurrSpaces) || (i == s.size() - 1)) {
-			break;
-		} else if ((CountLeftSpaces(s[i]) > CurrSpaces) && (PredSpaces == CurrSpaces)) {
-			q.push_back(i);
-			if (s[i - 1].find("elif ", 0) != string::npos) {
-				qS.push_back(++CurrLvlEnter);
-				//s[i] += IntToStr(CurrLvlEnter);
-				//CountElif = true;
-				//cout << "FOUND ELIF" << CurrLvlEnter << ":" << i << endl;
-				if (CurrLvlEnter > CLI) {
-					CLI = CurrLvlEnter;
-				}
-			} else if ((s[i - 1].find("else", 0) != string::npos) && (CurrLvlEnter > CurrLvl)) {
-				qS.push_back(++CurrLvlEnter);
-				//s[i] += IntToStr(CurrLvlEnter);
-				if (CurrLvlEnter > CLI) {
-					CLI = CurrLvlEnter;
-				}
-				CurrLvlEnter = CurrLvl;
-			} else {
-				CurrLvlEnter = CurrLvl;
-				//s[i] += IntToStr(CurrLvlEnter);
-				qS.push_back(CurrLvl);
-			}
-		}
-		PredSpaces = CountLeftSpaces(s[i]);
-	}
-
-	cout << endl << "===" << endl;
-	cout << "LEVEL: " << CurrLvl << endl;
-	for (int i = 0; i < q.size(); i++) {
-		cout << "Q: " << q[i] << "; QS: " << qS[i] << "|";
-	}
-
-	if (q.size() == 0)
-		cout << "EMPTY Q";
-	cout << endl << "===" << endl;
+	//for (int i = 0; i < lexems.size(); i++) {
+	while (lexems[i] != "<-" && i < lexems.size()) i++;
 	
-	for (int i = 0; i < q.size(); i++) {
-		CalcDepth(q[i], qS[i] + 1);
+	if (i >= lexems.size()) 
+		return counter;
+	else
+		i++;
+
+	while (lexems[i] != "<-" && i < lexems.size()) {
+		if (lexems[i] == VarName)
+			counter++;
+		i++;
+		if (i >= lexems.size()) return counter;
 	}
-}*/
+	//}
+	return counter;
+}
+
+int IsLeftAssign(string str, string VarName)
+{
+	trim(str);
+	trim(VarName);
+	auto lexems = GetStrLexems(str);
+	int counter = 0, i = 0;
+
+	bool IsAssign = false;
+	for (int i = 0; i < lexems.size(); i++)
+		if (lexems[i] == "<-")
+			IsAssign = true;
+	if (!IsAssign) return counter;
+
+	//for (int i = 0; i < lexems.size(); i++) {
+	while (lexems[i] != "<-" && i < lexems.size()) {
+		if (lexems[i] == VarName)
+			counter++;
+		i++;
+		if (i >= lexems.size()) break;
+	}
+	//}
+	return counter;
+}
+
+string GetVarName(string str)
+{
+	trim(str);
+	int k = 0;
+	string buf = "";
+	string VarName = "";
+	bool HasType = false;
+	bool IsFunc = true;
+	while (!isspace(str[k]) && k < str.size()) buf += str[k++];
+	for (int i = 0; i < types.size(); i++)
+		if (buf == types[i])
+			HasType = true;
+	if (!HasType) return "";
+	if (str[str.size() - 1] == '=') return "";
+	
+	buf = "";
+	while (isspace(str[k])) k++;
+	while (!isspace(str[k])) buf += str[k++];
+	if (buf == "mutable") {
+		buf = "";
+		while (isspace(str[k])) k++;
+		while (!isspace(str[k]) && k < str.size()) VarName += str[k++];
+	}
+	else {
+		VarName = buf;
+	}
+
+	return VarName;
+}
 
 void MaxCLI(int val)
 {
 	if (val > CLI)
 		CLI = val;
+}
+
+int Spen, LeftAssign, RightAssign, ConditionUsage;
+string VarName;
+
+bool IsUsedLine(vector<int> &usedLines, int Line) {
+	for (int i = 0; i < usedLines.size(); i++)
+		if (Line == usedLines[i])
+			return true;
+	return false;
+}
+
+void GoDepth(int CurrLine)
+{
+	// CurrLvl = now the max cond depth
+	int CurrSpaces = (CountLeftSpaces(s[CurrLine])); // Normal spaces on current lvl
+	int PredSpaces = 0;
+
+	vector <int> q, usedLines;
+	q.push_back(CurrLine + 1);
+	// Где есть переходы на след уровни
+	for (int i = CurrLine; i < s.size() - 1; i++) {
+		if (CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine]))
+			q.push_back(i);
+		while ((CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine])) && (i < (s.size() - 1))) i++;
+		if (CountLeftSpaces(s[i]) < CountLeftSpaces(s[CurrLine])) break;
+	}
+	/*
+	for (int i = CurrLine; i < s.size(); i++) {
+		if (s[i].find("match", 0) != string::npos) {
+			int CountCase = 0;
+			i++;
+			string str = s[i];
+			while (trim(str)[0] == '|') {
+				CountCase++;
+				str = s[++i];
+			}
+			if (CountCase == 1 || CountCase == 2) {
+				CountCase = 1;
+				if (CurrLvl > 0)
+					CountCase--;
+			}
+			else {
+				CountCase -= 2;
+			}
+			MaxCLI(CurrLvl + CountCase);
+			CurrLvlEnter = CurrLvl;
+			//cout << "MATCH" << endl;
+		}
+	}
+	*/
+	int j = 0;
+	for (int i = 0; i < q.size(); i++) {
+		j = q[i] - 1;
+		//cout << s[j]) << "_";
+		while ((CountLeftSpaces(s[j]) == CountLeftSpaces(s[CurrLine])) && (!IsUsedLine(usedLines, j))) {
+			if (GetVarName(s[j]) == VarName) {
+				q.erase(q.begin() + i);
+				break;
+			}
+			//cout << AddSpaces(s[j], CountLeftSpaces(s[CurrLine])) << endl;
+		
+		// Iterate here
+			usedLines.push_back(j);
+			LeftAssign += IsLeftAssign(s[j], VarName);
+			RightAssign += IsRightAssign(s[j], VarName);
+			ConditionUsage += IsConditionUsage(s[j], VarName);
+		// Iterate here
+		
+			j++;
+		}
+	}
+	
+	/*cout << endl << "===" << endl;
+	for (int i = 0; i < q.size(); i++) {
+		cout << "Q: " << q[i] << "|";
+	}
+
+	if (q.size() == 0)
+	cout << "EMPTY Q";*/
+	
+	for (int i = 1; i < q.size(); i++) {
+		GoDepth(q[i]);
+	}
+}
+
+void ProcessVars()
+{
+	bool IsP, IsM, IsC, IsT;
+
+	for (int i = 0; i < s.size(); i++)
+	{
+		IsP = IsM = IsC = IsT = false;
+		string VName = GetVarName(s[i]);
+		if (VName.length() > 0) {
+			VarName = VName;
+			//if (VName != "x") continue;
+			LeftAssign = 0;
+			RightAssign = 0;
+			ConditionUsage = 0; 
+			Spen = 0;
+			GoDepth(i + 1);
+			Spen = LeftAssign + RightAssign + ConditionUsage - 1;
+			cout << "Var: " << VName << " Спен: " << Spen << endl;
+		}
+	}
 }
 
 void CalcDepth(int CurrLine, int CurrLvl)
@@ -534,7 +638,8 @@ int main()
 	     << "c) ProgramBlock " << endl
 		 << "def: ProgramDebug " << endl << endl;
 	cout << "Select: ";
-	cin >> c;
+	//cin >> c;
+	c = 'l';
 	switch (c) {
 		case 'a':
 			FileName = "ProgramBig";
@@ -585,12 +690,19 @@ int main()
 		cout << vars[i] << " _ ";
 	}
 
-	cout << endl << "==================== RESULT ====================" << endl;
+	cout << endl << "==================== Метрика Джилба ====================" << endl;
 	cout.precision(2);
 	cout << "CL: " << CL << endl;
 	cout << "cl: " << (float)cl/CL << endl;
 	cout << "CLI: " << CLI << endl;
-	
+	cout << endl << "==================== Метрика Чепина ====================" << endl;
+	ProcessVars();
+	/*auto x = GetStrLexems("len <- line.Length");
+	for (int i = 0; i < x.size(); i++) {
+		cout << x[i] << "_";
+	}
+	cout << IsRightAssign("len <- line.Length", "line");*/
+	cout << endl;
 	system("pause");
 	return 0;
 }
