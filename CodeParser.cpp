@@ -11,7 +11,8 @@
 #include <sstream>
 #include <cctype>
 #include <locale>
-//#include "boost/algorithm/string.hpp"
+#include <iostream>
+#include <iomanip>
 
 // trim from start
 static inline std::string &ltrim(std::string &s) {
@@ -34,10 +35,10 @@ static inline std::string &trim(std::string &s) {
 
 using namespace std;
 
-vector <string> s, l, types, op, opCond, opCondCheck, vars;
+vector <string> s, l, types, op, opCond, opCondCheck, opPrint, vars;
 int OperatorsUsed = 0;
 int CLI = 0, CL = 0, cl = 0;
-int p = 0, m = 0, c = 0, t = 0;
+int p = 0, m = 0, cc = 0, t = 0, SPEN = 0;
 
 void InitLexems()
 {
@@ -109,8 +110,12 @@ void InitLexems()
 	opCondCheck.push_back("while");
 	opCondCheck.push_back("if");
 	opCondCheck.push_back("elif");
+	opCondCheck.push_back("match");
 
-	types.push_back("let mutable");
+	opPrint.push_back("printfn");
+	opPrint.push_back("printf");
+	opPrint.push_back("sprintf");
+
 	types.push_back("let");
 	types.push_back("bool");
 	types.push_back("byte");
@@ -326,6 +331,26 @@ int IsConditionUsage(string str, string VarName)
 	return counter;
 }
 
+int IsFuncPrint(string str, string VarName)
+{
+	trim(str);
+	trim(VarName);
+	auto lexems = GetStrLexems(str);
+	int counter = 0;
+
+	bool IsPrint = false;
+	for (int i = 0; i < opPrint.size(); i++)
+		if (opPrint[i] == lexems[0])
+			IsPrint = true;
+	if (!IsPrint) return counter;
+
+	for (int i = 1; i < lexems.size(); i++)
+		if (lexems[i] == VarName)
+			counter++;
+	//cout << VarName << " " << counter << endl;
+	return counter;
+}
+
 int IsRightAssign(string str, string VarName)
 {
 	trim(str);
@@ -435,52 +460,48 @@ void GoDepth(int CurrLine)
 
 	vector <int> q, usedLines;
 	q.push_back(CurrLine + 1);
+	//CurrLine++;
 	// Где есть переходы на след уровни
 	for (int i = CurrLine; i < s.size() - 1; i++) {
+		//while ((CountLeftSpaces(s[i]) == CountLeftSpaces(s[CurrLine])) && (i < (s.size() - 1))) i++;
 		if (CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine]))
 			q.push_back(i);
 		while ((CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine])) && (i < (s.size() - 1))) i++;
 		if (CountLeftSpaces(s[i]) < CountLeftSpaces(s[CurrLine])) break;
 	}
-	/*
-	for (int i = CurrLine; i < s.size(); i++) {
-		if (s[i].find("match", 0) != string::npos) {
-			int CountCase = 0;
-			i++;
-			string str = s[i];
-			while (trim(str)[0] == '|') {
-				CountCase++;
-				str = s[++i];
-			}
-			if (CountCase == 1 || CountCase == 2) {
-				CountCase = 1;
-				if (CurrLvl > 0)
-					CountCase--;
-			}
-			else {
-				CountCase -= 2;
-			}
-			MaxCLI(CurrLvl + CountCase);
-			CurrLvlEnter = CurrLvl;
-			//cout << "MATCH" << endl;
-		}
-	}
-	*/
-	int j = 0;
+
+	int k = q[q.size() - 1] - 1;
+	int j = k + 1;
+	while (CountLeftSpaces(s[CurrLine]) != CountLeftSpaces(s[j]) && j < s.size() - 1)
+		if (CountLeftSpaces(s[CurrLine]) >= CountLeftSpaces(s[j]) && j < s.size() - 1)
+			break;
+		else
+			j++;
+
+	if (CountLeftSpaces(s[CurrLine]) == CountLeftSpaces(s[j]) && j < s.size() - 1)
+		q.push_back(j);
+	else
+		q.push_back(-1);
+
+
+	j = 0;
 	for (int i = 0; i < q.size(); i++) {
-		j = q[i] - 1;
-		//cout << s[j]) << "_";
+		if (i < q.size() - 1) {
+			j = q[i] - 1;
+		} else {
+			j = q[i];
+		}
+		if ((j < 0) || (j >= s.size() - 1)) break;
 		while ((CountLeftSpaces(s[j]) == CountLeftSpaces(s[CurrLine])) && (!IsUsedLine(usedLines, j))) {
 			if (GetVarName(s[j]) == VarName) {
 				q.erase(q.begin() + i);
 				break;
 			}
-			//cout << AddSpaces(s[j], CountLeftSpaces(s[CurrLine])) << endl;
-		
 		// Iterate here
 			usedLines.push_back(j);
 			LeftAssign += IsLeftAssign(s[j], VarName);
 			RightAssign += IsRightAssign(s[j], VarName);
+			RightAssign += IsFuncPrint(s[j], VarName);
 			ConditionUsage += IsConditionUsage(s[j], VarName);
 		// Iterate here
 		
@@ -490,35 +511,51 @@ void GoDepth(int CurrLine)
 	
 	/*cout << endl << "===" << endl;
 	for (int i = 0; i < q.size(); i++) {
-		cout << "Q: " << q[i] << "|";
+		cout << "Q: " << q[i] << "| ";
 	}
 
-	if (q.size() == 0)
+	if (q.size() - 2 == 0)
 	cout << "EMPTY Q";*/
 	
-	for (int i = 1; i < q.size(); i++) {
+	for (int i = 1; i < q.size() - 1; i++) {
 		GoDepth(q[i]);
 	}
 }
 
 void ProcessVars()
 {
-	bool IsP, IsM, IsC, IsT;
+	bool P, M, C, T;
 
 	for (int i = 0; i < s.size(); i++)
 	{
-		IsP = IsM = IsC = IsT = false;
+		P = M = C = T = false;
 		string VName = GetVarName(s[i]);
 		if (VName.length() > 0) {
 			VarName = VName;
-			//if (VName != "x") continue;
+			//if (VName != "rez") continue;
 			LeftAssign = 0;
 			RightAssign = 0;
 			ConditionUsage = 0; 
 			Spen = 0;
 			GoDepth(i + 1);
-			Spen = LeftAssign + RightAssign + ConditionUsage - 1;
-			cout << "Var: " << VName << " Спен: " << Spen << endl;
+			Spen = LeftAssign + RightAssign + ConditionUsage;
+			SPEN += Spen;
+			if (ConditionUsage > 0)
+				C = true;
+			if (LeftAssign > 0 && RightAssign > 0 && !C)
+				M = true;
+			if (LeftAssign == 0 && !M)
+				P = true;
+			if (!C && !M && !P)
+				T = true;
+
+			cc += (int)C;
+			m += (int)M;
+			p += (int)P;
+			t += (int)T;
+			cout.setf(ios::left);
+			//cout << "DEBUG: Var: " << setfill(' ') << setw(5) << VName << " Спен: " << setfill(' ') << setw(2) << Spen << "; L:" << LeftAssign << "; R:" << RightAssign << "; C:" << ConditionUsage << endl;
+			cout << "Var: " << setfill(' ') << setw(15) << VName << " Спен: " << setfill(' ') << setw(2) << Spen << "; P:" << (int)P << "; M:" << (int)M << "; C:" << (int)C << "; T:" << (int)T << endl;
 		}
 	}
 }
@@ -638,8 +675,7 @@ int main()
 	     << "c) ProgramBlock " << endl
 		 << "def: ProgramDebug " << endl << endl;
 	cout << "Select: ";
-	//cin >> c;
-	c = 'l';
+	cin >> c;
 	switch (c) {
 		case 'a':
 			FileName = "ProgramBig";
@@ -691,17 +727,16 @@ int main()
 	}
 
 	cout << endl << "==================== Метрика Джилба ====================" << endl;
-	cout.precision(2);
+	cout.precision(3);
 	cout << "CL: " << CL << endl;
 	cout << "cl: " << (float)cl/CL << endl;
 	cout << "CLI: " << CLI << endl;
 	cout << endl << "==================== Метрика Чепина ====================" << endl;
 	ProcessVars();
-	/*auto x = GetStrLexems("len <- line.Length");
-	for (int i = 0; i < x.size(); i++) {
-		cout << x[i] << "_";
-	}
-	cout << IsRightAssign("len <- line.Length", "line");*/
+	cout << "Спен = " << (int)SPEN << endl;
+	cout << "Q = " << p << " + 2*" << m << " + 3*" << cc << " + 0,5*" << t << endl;
+	cout << "Q = " << (p + 2 * m + 3 * cc + 0.5*t) << endl;
+
 	cout << endl;
 	system("pause");
 	return 0;

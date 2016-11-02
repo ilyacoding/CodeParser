@@ -563,4 +563,4 @@ type Context private (__) =
 
     member self.Dispose() =
       self.Finalize()
-GC.SuppressFinalize(self)
+  GC.SuppressFinalize(self)
