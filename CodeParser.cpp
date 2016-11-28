@@ -35,7 +35,8 @@ static inline std::string &trim(std::string &s) {
 
 using namespace std;
 
-vector <string> s, l, types, op, opCond, opCondCheck, opPrint, vars;
+vector <string> s, l, types, op, opCond, opCondCheck, opPrint, vars, opHolsted;
+int HolstedOperators[36];
 int OperatorsUsed = 0;
 int CLI = 0, CL = 0, cl = 0;
 int p = 0, m = 0, cc = 0, t = 0, SPEN = 0;
@@ -135,6 +136,88 @@ void InitLexems()
 	types.push_back("single");
 	types.push_back("float");
 	types.push_back("double");
+
+	opHolsted.push_back("+");
+	opHolsted.push_back("-");
+	opHolsted.push_back("*");
+	opHolsted.push_back("/");
+	opHolsted.push_back("%");
+	opHolsted.push_back("**");
+
+	opHolsted.push_back("=");
+	opHolsted.push_back(">");
+	opHolsted.push_back("<");
+	opHolsted.push_back(">=");
+	opHolsted.push_back("<=");
+	opHolsted.push_back("<>");
+
+	opHolsted.push_back("&&&");
+	opHolsted.push_back("|||");
+	opHolsted.push_back("~~~");
+	opHolsted.push_back("^^^");
+	opHolsted.push_back("»>");
+	opHolsted.push_back("«<");
+
+	opHolsted.push_back("for");
+	opHolsted.push_back("while");
+	opHolsted.push_back("if");
+	opHolsted.push_back("elif");
+	opHolsted.push_back("match");
+	opHolsted.push_back("|");
+	opHolsted.push_back(".");
+	opHolsted.push_back(",");
+	opHolsted.push_back(":");
+	opHolsted.push_back("(");
+	opHolsted.push_back("[");
+	opHolsted.push_back("<-");
+
+	opHolsted.push_back("||");
+	opHolsted.push_back("&&");
+	opHolsted.push_back("not");
+	opHolsted.push_back("break");
+	opHolsted.push_back("continue");
+}
+
+class OperandDict {
+public:
+	vector <string> Operands;
+	vector <int> AmountOperands;
+	void Add(string str);
+	bool IsIn(string str);
+	void Print();
+};
+
+OperandDict opDict;
+
+bool OperandDict::IsIn(string str)
+{
+	for (int i = 0; i < Operands.size(); i++)
+		if (Operands[i] == str)
+			return true;
+	return false;
+}
+
+void OperandDict::Add(string str)
+{
+	if (IsIn(str))
+	{
+		for (int i = 0; i < Operands.size(); i++)
+			if (Operands[i] == str) {
+				AmountOperands[i]++;
+				break;
+			}
+	}
+	else {
+		Operands.push_back(str);
+		AmountOperands.push_back(0);
+	}
+}
+
+void OperandDict::Print()
+{
+	cout << endl << "Operands: " << endl;
+	for (int i = 0; i < Operands.size(); i++)
+		cout << "Value: " << Operands[i] << " Count: " << AmountOperands[i] << endl;
 }
 
 string IntToStr(int val)
@@ -239,6 +322,7 @@ void EraseEmptyStrings()
 
 void GetLexems()
 {
+	l.clear();
 	for (int i = 0; i < s.size() - 1; i++)
 	{
 		string buf = "";
@@ -277,12 +361,33 @@ int IsLexem(string str)
 	return 0;
 }
 
+int IsHolstedLexem(string str)
+{
+	for (int i = 0; i < opHolsted.size(); i++)
+		if (str == opHolsted[i])
+			return 1;
+	return 0;
+}
+
+int GetIndexOfHolsted(string str)
+{
+	for (int i = 0; i < opHolsted.size(); i++)
+		if (str == opHolsted[i])
+			return i;
+	return 35;
+}
+
 int IsCondLexem(string str)
 {
 	for (int i = 0; i < opCond.size(); i++)
 		if (str == opCond[i])
 			return 1;
 	return 0;
+}
+
+bool is_digits(const std::string &str)
+{
+	return str.find_first_not_of("0123456789") == std::string::npos;
 }
 
 vector<string> GetStrLexems(string str)
@@ -293,7 +398,7 @@ vector<string> GetStrLexems(string str)
 
 	for (int j = 0; j < str.length(); j++)
 	{
-		while ((isalpha(str[j])/* || str[j] == '.'*/ || isdigit(str[j])) && (j < str.length())) buf += str[j++];
+		while ((isalpha(str[j]) || (str[j] == '.' && is_digits(buf)) || isdigit(str[j])) && (j < str.length())) buf += str[j++];
 		if (buf.length() > 0) {
 			trim(buf);
 			lexems.push_back(buf);
@@ -310,6 +415,39 @@ vector<string> GetStrLexems(string str)
 	}
 	lexems.push_back(";");
 	return lexems;
+}
+
+void GetHolstedLexems()
+{
+	l.clear();
+	for (int i = 0; i < s.size() - 1; i++)
+	{
+		string buf = "";
+		string str = s[i];
+		//str = boost::algorithm::trim_copy(s[i]);
+		trim(str);
+
+		for (int j = 0; j < str.length(); j++)
+		{
+			while ((isalpha(str[j]) || (str[j] == '.' && is_digits(buf)) || isdigit(str[j])) && (j < str.length())) buf += str[j++];
+			if (buf.length() > 0) {
+				//boost::algorithm::trim(buf);
+				trim(buf);
+				l.push_back(buf);
+				buf = "";
+			}
+
+			while ((!isspace(str[j]) && !isalpha(str[j]) && !isdigit(str[j])) && (j < str.length())) buf += str[j++];
+			if (buf.length() > 0) {
+				//boost::algorithm::trim(buf);
+				trim(buf);
+				l.push_back(buf);
+				buf = "";
+			}
+			if (isalpha(str[j]) || isdigit(str[j])) j--;
+		}
+		l.push_back(";");
+	}
 }
 
 int IsConditionUsage(string str, string VarName)
@@ -544,7 +682,7 @@ void ProcessVars()
 				C = true;
 			if (LeftAssign > 0 && RightAssign > 0 && !C)
 				M = true;
-			if (LeftAssign == 0 && !M)
+			if (LeftAssign == 0 && RightAssign > 0 && !M && !C)
 				P = true;
 			if (!C && !M && !P)
 				T = true;
@@ -556,6 +694,88 @@ void ProcessVars()
 			cout.setf(ios::left);
 			//cout << "DEBUG: Var: " << setfill(' ') << setw(5) << VName << " Спен: " << setfill(' ') << setw(2) << Spen << "; L:" << LeftAssign << "; R:" << RightAssign << "; C:" << ConditionUsage << endl;
 			cout << "Var: " << setfill(' ') << setw(15) << VName << " Спен: " << setfill(' ') << setw(2) << Spen << "; P:" << (int)P << "; M:" << (int)M << "; C:" << (int)C << "; T:" << (int)T << endl;
+		}
+	}
+}
+
+void GoDepthH(int CurrLine)
+{
+	// CurrLvl = now the max cond depth
+	int CurrSpaces = (CountLeftSpaces(s[CurrLine])); // Normal spaces on current lvl
+	int PredSpaces = 0;
+
+	vector <int> q, usedLines;
+	q.push_back(CurrLine + 1);
+	//CurrLine++;
+	// Где есть переходы на след уровни
+	for (int i = CurrLine; i < s.size() - 1; i++) {
+		//while ((CountLeftSpaces(s[i]) == CountLeftSpaces(s[CurrLine])) && (i < (s.size() - 1))) i++;
+		if (CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine]))
+			q.push_back(i);
+		while ((CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine])) && (i < (s.size() - 1))) i++;
+		if (CountLeftSpaces(s[i]) < CountLeftSpaces(s[CurrLine])) break;
+	}
+
+	int k = q[q.size() - 1] - 1;
+	int j = k + 1;
+	while (CountLeftSpaces(s[CurrLine]) != CountLeftSpaces(s[j]) && j < s.size() - 1)
+		if (CountLeftSpaces(s[CurrLine]) >= CountLeftSpaces(s[j]) && j < s.size() - 1)
+			break;
+		else
+			j++;
+
+	if (CountLeftSpaces(s[CurrLine]) == CountLeftSpaces(s[j]) && j < s.size() - 1)
+		q.push_back(j);
+	else
+		q.push_back(-1);
+
+
+	j = 0;
+	for (int i = 0; i < q.size(); i++) {
+		if (i < q.size() - 1) {
+			j = q[i] - 1;
+		}
+		else {
+			j = q[i];
+		}
+		if ((j < 0) || (j >= s.size() - 1)) break;
+		while ((CountLeftSpaces(s[j]) == CountLeftSpaces(s[CurrLine])) && (!IsUsedLine(usedLines, j))) {
+			if (GetVarName(s[j]) == VarName) {
+				q.erase(q.begin() + i);
+				break;
+			}
+			// Iterate here
+			usedLines.push_back(j);
+			if (IsLeftAssign(s[j], VarName) || IsRightAssign(s[j], VarName) || IsFuncPrint(s[j], VarName) || IsConditionUsage(s[j], VarName))
+				opDict.Add(VarName);
+			// Iterate here
+
+			j++;
+		}
+	}
+
+	/*cout << endl << "===" << endl;
+	for (int i = 0; i < q.size(); i++) {
+	cout << "Q: " << q[i] << "| ";
+	}
+
+	if (q.size() - 2 == 0)
+	cout << "EMPTY Q";*/
+
+	for (int i = 1; i < q.size() - 1; i++) {
+		GoDepthH(q[i]);
+	}
+}
+
+void ProcessVarsH()
+{
+	for (int i = 0; i < s.size(); i++)
+	{
+		string VName = GetVarName(s[i]);
+		if (VName.length() > 0) {
+			opDict.Add(VName);
+
+			GoDepthH(i + 1);
 		}
 	}
 }
@@ -721,6 +941,7 @@ int main()
 		CL += IsLexem(l[i]);
 		cl += IsCondLexem(l[i]);
 	}
+
 	
 	for (int i = 0; i < vars.size(); i++) {
 		cout << vars[i] << " _ ";
@@ -731,11 +952,49 @@ int main()
 	cout << "CL: " << CL << endl;
 	cout << "cl: " << (float)cl/CL << endl;
 	cout << "CLI: " << CLI << endl;
-	cout << endl << "==================== Метрика Чепина ====================" << endl;
+	//auto x = GetStrLexems("            if              a>      field.DICK > n >  2.0         b                       then              ");
+	//for (int i = 0; i < x.size(); i++)
+	//	cout << x[i] << "_";
+
+	cout << endl << "=================== Метрика Холстеда ====================" << endl;
+	GetHolstedLexems();
+
+	for (int i = 0; i < l.size(); i++)
+		HolstedOperators[GetIndexOfHolsted(l[i])] += IsHolstedLexem(l[i]);
+
+	for (int i = 0; i < opHolsted.size(); i++)
+		if (HolstedOperators[i])		
+			cout << "Lexem: " << opHolsted[i] << "  Count: " << HolstedOperators[i] << "." << endl;
+
+	for (int i = 0 ; i < s.size(); i++)
+	{
+		string VName = GetVarName(s[i]);
+		if (VName.length() > 0 && !opDict.IsIn(VName)) {
+			opDict.Add(VName);
+			for (int j = i + 1; j < s.size(); j++)
+			{
+				auto x = GetStrLexems(s[j]);
+				for (int k = 0; k < x.size(); k++)
+				{
+					if (x[k] == VName)
+						opDict.Add(VName);
+				}
+			}
+		}
+	}
+
+	opDict.Print();
+	
+
+	/*cout << endl << "==================== Полная метрика Чепина ====================" << endl;
 	ProcessVars();
 	cout << "Спен = " << (int)SPEN << endl;
+	cout << "P: " << p << endl;
+	cout << "M: " << m << endl;
+	cout << "C: " << cc << endl;
+	cout << "T: " << t << endl;
 	cout << "Q = " << p << " + 2*" << m << " + 3*" << cc << " + 0,5*" << t << endl;
-	cout << "Q = " << (p + 2 * m + 3 * cc + 0.5*t) << endl;
+	cout << "Q = " << (p + 2 * m + 3 * cc + 0.5*t) << endl;*/
 
 	cout << endl;
 	system("pause");

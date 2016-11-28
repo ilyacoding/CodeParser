@@ -1,10 +1,12 @@
 open System
 [<EntryPoint>]
+
 let main argv = 
     let line = Console.ReadLine()
     let mutable i = 0.0
     let mutable x = 0
     let mutable len = 0
+    //let VAR = 9
     len <- line.Length
     match len with
     | 1 -> x <- 10
@@ -12,6 +14,8 @@ let main argv =
     | 3 -> x <- 30
     | _ -> x <- 40
     printfn "%d" x
+    //if VAR = 9 then
+    //    x <- 1
     if x = 10 then
         printfn("X will be ten")
     elif x = 20 then
