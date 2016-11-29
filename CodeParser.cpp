@@ -582,6 +582,30 @@ string GetVarName(string str)
 	return VarName;
 }
 
+vector <string> GetFuncParams(string str)
+{
+	vector <string> result;
+	trim(str);
+	auto x = GetStrLexems(str);
+	bool HasType = false;
+	bool IsFunc = true;
+	int k = 0;
+	//return x;
+	for (int i = 0; i < types.size(); i++)
+		if (x[0] == types[i])
+			HasType = true;
+	if (!HasType) return result;
+	if (x[1] == "mutable") return result;
+	if (x[x.size() - 2] != "=") return result;
+	// let func ACB C =
+	for (int i = 2; i < x.size() - 2; i++)
+	{
+		result.push_back(x[i]);
+	}
+
+	return result;
+}
+
 void MaxCLI(int val)
 {
 	if (val > CLI)
@@ -909,7 +933,29 @@ int main()
 
 	for (int i = 0 ; i < s.size(); i++)
 	{
-		string VName = GetVarName(s[i]);
+		string VName = GetVarName(s[i]);				
+		// BEGIN ÏÀÐÑÈÍÃ ÏÀÐÀÌÅÒÐÎÂ
+		/*
+		auto f = GetFuncParams(s[i]);
+		for (int y = 0; y < f.size(); y++)
+			if (!opDict.IsIn(f[y]))
+			{
+				opDict.Add(f[y]);
+				for (int j = i + 1; j < s.size(); j++)
+				{
+					if (!GetVarName(s[j]).length())
+					{
+						auto x = GetStrLexems(s[j]);
+						for (int k = 0; k < x.size(); k++)
+						{
+							if (x[k] == f[y])
+								opDict.Add(f[y]);
+						}
+					}
+				}
+			}
+		*/
+		// END ÏÀÐÑÈÍÃ ÏÀÐÀÌÅÒÐÎÂ
 		if (VName.length() > 0 && !opDict.IsIn(VName)) {
 			opDict.Add(VName);
 			for (int j = i + 1; j < s.size(); j++)
