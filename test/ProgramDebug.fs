@@ -1,11 +1,19 @@
 open System
 [<EntryPoint>]
 
+let func y = 
+        let mutable super = 0
+        super <- super + y
+    super
+
 let main argv = 
     let line = Console.ReadLine()
     let mutable i = 0.0
     let mutable x = 0
     let mutable len = 0
+    let mutable super = 0
+    let notmut = 0
+    
     //let VAR = 9
     len <- line.Length
     match len with
@@ -13,6 +21,8 @@ let main argv =
     | 2 -> x <- 20
     | 3 -> x <- 30
     | _ -> x <- 40
+    match super with
+    | 1 -> super<- 4
     printfn "%d" x
     //if VAR = 9 then
     //    x <- 1
@@ -52,6 +62,8 @@ let main argv =
         let mutable A = 0
         let mutable B = 10
         let mutable rez = 0
+        //let super = 3
+        //super<-1000
         i <- 0.0
         while i < 10.0 do
             rez <- A * B
