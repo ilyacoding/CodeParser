@@ -40,6 +40,8 @@ int HolstedOperators[36];
 int OperatorsUsed = 0;
 int CLI = 0, CL = 0, cl = 0;
 int p = 0, m = 0, cc = 0, t = 0, SPEN = 0;
+int opCount = 0, varCount = 0, opFullCount = 0, varFullCount = 0, vocabulary = 0, longitude = 0;
+double volume = 0;
 
 void InitLexems()
 {
@@ -963,8 +965,14 @@ int main()
 		HolstedOperators[GetIndexOfHolsted(l[i])] += IsHolstedLexem(l[i]);
 
 	for (int i = 0; i < opHolsted.size(); i++)
-		if (HolstedOperators[i])		
+		if (HolstedOperators[i])
+		{
 			cout << "Lexem: " << opHolsted[i] << "  Count: " << HolstedOperators[i] << "." << endl;
+			opCount++;
+			opFullCount += HolstedOperators[i];
+		};
+	cout << endl << "Число операторов: " << opCount << endl;
+	cout << "Общее число операторов: " << opFullCount << endl;
 
 	for (int i = 0 ; i < s.size(); i++)
 	{
@@ -977,14 +985,37 @@ int main()
 				for (int k = 0; k < x.size(); k++)
 				{
 					if (x[k] == VName)
+						//if ((k > 0) && (x[k - 1] != "mutable" || x[k - 1] != "let")) opDict.Add(VName);
+					
 						opDict.Add(VName);
+					//cout << x[k] << " ";
+					//
+					//if (k > 0) cout << x[k - 1] << endl;
+					//if (x[k - 1] == "mutable" || x[k - 1] == "let")
+						//cout << "!!!!!" << endl;
+					//if (x[k] == "rez" && (k > 0))
+						//cout << x[k - 1] << " " << x[k] << endl;
 				}
 			}
 		}
 	}
 
 	opDict.Print();
-	
+
+	varCount = opDict.AmountOperands.size();
+	cout << endl << "Число операндов: " << varCount << endl;
+	for (int i = 0; i < opDict.AmountOperands.size(); i++)
+		varFullCount += opDict.AmountOperands[i];
+	cout << "Общее число операндов: " << varFullCount << endl;
+
+	vocabulary = varCount + opCount;
+	longitude = varFullCount + opFullCount;
+	volume = (double)longitude * (log(vocabulary) / log(2));
+
+	cout << endl << "Словарь программы: " << vocabulary << endl;
+	cout << "Длина программы: " << longitude << endl;
+	cout.precision(3);
+	cout << "Объём программы: " << (double)volume << endl;
 
 	/*cout << endl << "==================== Полная метрика Чепина ====================" << endl;
 	ProcessVars();
