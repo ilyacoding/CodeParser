@@ -41,7 +41,7 @@ int OperatorsUsed = 0;
 int CLI = 0, CL = 0, cl = 0;
 int p = 0, m = 0, cc = 0, t = 0, SPEN = 0;
 int opCount = 0, varCount = 0, opFullCount = 0, varFullCount = 0, vocabulary = 0, longitude = 0;
-double volume = 0;
+float volume = 0;
 
 void InitLexems()
 {
@@ -217,9 +217,15 @@ void OperandDict::Add(string str)
 
 void OperandDict::Print()
 {
-	cout << endl << "Operands: " << endl;
+	cout.setf(ios::left);
+	cout << "___________________________" << endl;
+	cout << "| Операнд:     Количество: |" << endl;
+	cout << "---------------------------" << endl;
+
+
 	for (int i = 0; i < Operands.size(); i++)
-		cout << "Value: " << Operands[i] << " Count: " << AmountOperands[i] << endl;
+		cout << "| " << setfill('.') << setw(18) << (Operands[i] + " ") << "| " << setfill(' ') << setw(3) << AmountOperands[i] << " |" << endl;
+	cout << "---------------------------" << endl;
 }
 
 string IntToStr(int val)
@@ -700,88 +706,6 @@ void ProcessVars()
 	}
 }
 
-void GoDepthH(int CurrLine)
-{
-	// CurrLvl = now the max cond depth
-	int CurrSpaces = (CountLeftSpaces(s[CurrLine])); // Normal spaces on current lvl
-	int PredSpaces = 0;
-
-	vector <int> q, usedLines;
-	q.push_back(CurrLine + 1);
-	//CurrLine++;
-	// Где есть переходы на след уровни
-	for (int i = CurrLine; i < s.size() - 1; i++) {
-		//while ((CountLeftSpaces(s[i]) == CountLeftSpaces(s[CurrLine])) && (i < (s.size() - 1))) i++;
-		if (CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine]))
-			q.push_back(i);
-		while ((CountLeftSpaces(s[i]) > CountLeftSpaces(s[CurrLine])) && (i < (s.size() - 1))) i++;
-		if (CountLeftSpaces(s[i]) < CountLeftSpaces(s[CurrLine])) break;
-	}
-
-	int k = q[q.size() - 1] - 1;
-	int j = k + 1;
-	while (CountLeftSpaces(s[CurrLine]) != CountLeftSpaces(s[j]) && j < s.size() - 1)
-		if (CountLeftSpaces(s[CurrLine]) >= CountLeftSpaces(s[j]) && j < s.size() - 1)
-			break;
-		else
-			j++;
-
-	if (CountLeftSpaces(s[CurrLine]) == CountLeftSpaces(s[j]) && j < s.size() - 1)
-		q.push_back(j);
-	else
-		q.push_back(-1);
-
-
-	j = 0;
-	for (int i = 0; i < q.size(); i++) {
-		if (i < q.size() - 1) {
-			j = q[i] - 1;
-		}
-		else {
-			j = q[i];
-		}
-		if ((j < 0) || (j >= s.size() - 1)) break;
-		while ((CountLeftSpaces(s[j]) == CountLeftSpaces(s[CurrLine])) && (!IsUsedLine(usedLines, j))) {
-			if (GetVarName(s[j]) == VarName) {
-				q.erase(q.begin() + i);
-				break;
-			}
-			// Iterate here
-			usedLines.push_back(j);
-			if (IsLeftAssign(s[j], VarName) || IsRightAssign(s[j], VarName) || IsFuncPrint(s[j], VarName) || IsConditionUsage(s[j], VarName))
-				opDict.Add(VarName);
-			// Iterate here
-
-			j++;
-		}
-	}
-
-	/*cout << endl << "===" << endl;
-	for (int i = 0; i < q.size(); i++) {
-	cout << "Q: " << q[i] << "| ";
-	}
-
-	if (q.size() - 2 == 0)
-	cout << "EMPTY Q";*/
-
-	for (int i = 1; i < q.size() - 1; i++) {
-		GoDepthH(q[i]);
-	}
-}
-
-void ProcessVarsH()
-{
-	for (int i = 0; i < s.size(); i++)
-	{
-		string VName = GetVarName(s[i]);
-		if (VName.length() > 0) {
-			opDict.Add(VName);
-
-			GoDepthH(i + 1);
-		}
-	}
-}
-
 void CalcDepth(int CurrLine, int CurrLvl)
 {
 	// CurrLvl = now the max cond depth
@@ -958,21 +882,30 @@ int main()
 	//for (int i = 0; i < x.size(); i++)
 	//	cout << x[i] << "_";
 
-	cout << endl << "=================== Метрика Холстеда ====================" << endl;
+	cout << endl << "=================== Метрика Холстеда ====================" << endl << endl;
+	cout.precision(6);
 	GetHolstedLexems();
 
 	for (int i = 0; i < l.size(); i++)
 		HolstedOperators[GetIndexOfHolsted(l[i])] += IsHolstedLexem(l[i]);
-
+	cout << "___________________________" << endl;
+	cout << "| Оператор:    Количество: |" << endl;
+	cout << "---------------------------" << endl;
+	cout.setf(ios::left);
 	for (int i = 0; i < opHolsted.size(); i++)
 		if (HolstedOperators[i])
 		{
-			cout << "Lexem: " << opHolsted[i] << "  Count: " << HolstedOperators[i] << "." << endl;
+			//cout << "Var: " << setfill(' ') << setw(15) << VName << " Спен: " << setfill(' ') << setw(2) << Spen << "; P:" << (int)P << "; M:" << (int)M << "; C:" << (int)C << "; T:" << (int)T << endl;
+
+			cout << "| " << setfill('.') << setw(18) << (opHolsted[i] + " ") << "| " << setfill(' ') << setw(3) << HolstedOperators[i] << " |" << endl;
 			opCount++;
 			opFullCount += HolstedOperators[i];
-		};
-	cout << endl << "Число операторов: " << opCount << endl;
-	cout << "Общее число операторов: " << opFullCount << endl;
+		}
+
+	cout << "---------------------------" << endl;
+	cout << " Число операторов: " << opCount << endl;
+	cout << " Общее число операторов: " << opFullCount << endl;
+	cout << "---------------------------" << endl;
 
 	for (int i = 0 ; i < s.size(); i++)
 	{
@@ -981,41 +914,38 @@ int main()
 			opDict.Add(VName);
 			for (int j = i + 1; j < s.size(); j++)
 			{
-				auto x = GetStrLexems(s[j]);
-				for (int k = 0; k < x.size(); k++)
+				if (!GetVarName(s[j]).length())
 				{
-					if (x[k] == VName)
-						//if ((k > 0) && (x[k - 1] != "mutable" || x[k - 1] != "let")) opDict.Add(VName);
-					
-						opDict.Add(VName);
-					//cout << x[k] << " ";
-					//
-					//if (k > 0) cout << x[k - 1] << endl;
-					//if (x[k - 1] == "mutable" || x[k - 1] == "let")
-						//cout << "!!!!!" << endl;
-					//if (x[k] == "rez" && (k > 0))
-						//cout << x[k - 1] << " " << x[k] << endl;
+					auto x = GetStrLexems(s[j]);
+					for (int k = 0; k < x.size(); k++)
+					{
+						if (x[k] == VName)
+							opDict.Add(VName);
+					}
 				}
 			}
 		}
 	}
 
+
 	opDict.Print();
 
 	varCount = opDict.AmountOperands.size();
-	cout << endl << "Число операндов: " << varCount << endl;
+	cout << " Число операндов: " << varCount << endl;
 	for (int i = 0; i < opDict.AmountOperands.size(); i++)
 		varFullCount += opDict.AmountOperands[i];
-	cout << "Общее число операндов: " << varFullCount << endl;
+	cout << " Общее число операндов: " << varFullCount << endl;
+	cout << "---------------------------" << endl << endl;
 
 	vocabulary = varCount + opCount;
 	longitude = varFullCount + opFullCount;
-	volume = (double)longitude * (log(vocabulary) / log(2));
+	volume = longitude * ((float)log(vocabulary) / log(2));
 
-	cout << endl << "Словарь программы: " << vocabulary << endl;
-	cout << "Длина программы: " << longitude << endl;
-	cout.precision(3);
-	cout << "Объём программы: " << (double)volume << endl;
+	cout << "---------Результат----------" << endl;
+	cout << " Словарь программы: " << vocabulary << endl;
+	cout << " Длина программы: " << longitude << endl;
+	cout << " Объём программы: " << volume << endl;
+	cout << "----------------------------" << endl;
 
 	/*cout << endl << "==================== Полная метрика Чепина ====================" << endl;
 	ProcessVars();
