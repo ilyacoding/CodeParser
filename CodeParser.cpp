@@ -582,6 +582,31 @@ string GetVarName(string str)
 	return VarName;
 }
 
+inline bool isInteger(const std::string & s)
+{
+	if (s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+'))) return false;
+
+	char * p;
+	strtol(s.c_str(), &p, 10);
+
+	return (*p == 0);
+}
+
+vector <string> GetDigits(string str)
+{
+	vector <string> result;
+	trim(str);
+	auto x = GetStrLexems(str);
+	for (int i = 0; i < x.size(); i++)
+	{
+		string tmp = x[i];
+		replace(tmp.begin(), tmp.end(), '.', '1');
+		if (isInteger(tmp))
+			result.push_back(x[i]);
+	}
+	return result;
+}
+
 vector <string> GetFuncParams(string str)
 {
 	vector <string> result;
@@ -841,28 +866,28 @@ int main()
 	char c;
 	string FileName;
 	cout << "a) ProgramBig " << endl
-	     << "b) ProgramTest " << endl
-	     << "c) ProgramBlock " << endl
-		 << "def: ProgramDebug " << endl << endl;
+		<< "b) ProgramTest " << endl
+		<< "c) ProgramBlock " << endl
+		<< "def: ProgramDebug " << endl << endl;
 	cout << "Select: ";
 	cin >> c;
 	switch (c) {
-		case 'a':
-			FileName = "ProgramBig";
-			break;
-		case 'b':
-			FileName = "ProgramTest";
-			break;
-		case 'c':
-			FileName = "ProgramBlock";
-			break;
-		default:
-			FileName = "ProgramDebug";
-			break;
+	case 'a':
+		FileName = "ProgramBig";
+		break;
+	case 'b':
+		FileName = "ProgramTest";
+		break;
+	case 'c':
+		FileName = "ProgramBlock";
+		break;
+	default:
+		FileName = "ProgramDebug";
+		break;
 	}
 	file.open(("test/" + FileName + ".fs").c_str(), ios_base::in);
 	file.imbue(std::locale(""));
-	
+
 	while (!file.eof()) {
 		file.getline(buf, 500);
 		s.push_back(buf);
@@ -892,7 +917,7 @@ int main()
 		cl += IsCondLexem(l[i]);
 	}
 
-	
+
 	for (int i = 0; i < vars.size(); i++) {
 		cout << vars[i] << " _ ";
 	}
@@ -900,7 +925,7 @@ int main()
 	cout << endl << "==================== Ìåòðèêà Äæèëáà ====================" << endl;
 	cout.precision(3);
 	cout << "CL: " << CL << endl;
-	cout << "cl: " << (float)cl/CL << endl;
+	cout << "cl: " << (float)cl / CL << endl;
 	cout << "CLI: " << CLI << endl;
 	//auto x = GetStrLexems("            if              a>      field.DICK > n >  2.0         b                       then              ");
 	//for (int i = 0; i < x.size(); i++)
@@ -931,9 +956,9 @@ int main()
 	cout << " Îáùåå ÷èñëî îïåðàòîðîâ: " << opFullCount << endl;
 	cout << "---------------------------" << endl;
 
-	for (int i = 0 ; i < s.size(); i++)
+	for (int i = 0; i < s.size(); i++)
 	{
-		string VName = GetVarName(s[i]);				
+		string VName = GetVarName(s[i]);
 		// BEGIN ÏÀÐÑÈÍÃ ÏÀÐÀÌÅÒÐÎÂ
 		/*
 		auto f = GetFuncParams(s[i]);
@@ -956,6 +981,20 @@ int main()
 			}
 		*/
 		// END ÏÀÐÑÈÍÃ ÏÀÐÀÌÅÒÐÎÂ
+		auto f = GetDigits(s[i]);
+		for (int y = 0; y < f.size(); y++)
+		{
+			if (!opDict.IsIn(f[y]))
+			{
+
+				opDict.Add(f[y]);
+				opDict.Add(f[y]);
+			}
+			else {
+
+				opDict.Add(f[y]);
+			}
+		}
 		if (VName.length() > 0 && !opDict.IsIn(VName)) {
 			opDict.Add(VName);
 			for (int j = i + 1; j < s.size(); j++)
