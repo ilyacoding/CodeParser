@@ -228,6 +228,54 @@ void OperandDict::Print()
 	cout << "---------------------------" << endl;
 }
 
+class OperDict {
+public:
+	vector <string> Operators;
+	vector <int> AmountOperators;
+	void Add(string str);
+	bool IsIn(string str);
+	void Print();
+};
+
+OperDict operDict;
+
+bool OperDict::IsIn(string str)
+{
+	for (int i = 0; i < Operators.size(); i++)
+		if (Operators[i] == str)
+			return true;
+	return false;
+}
+
+void OperDict::Add(string str)
+{
+	if (IsIn(str))
+	{
+		for (int i = 0; i < Operators.size(); i++)
+			if (Operators[i] == str) {
+				AmountOperators[i]++;
+				break;
+			}
+	}
+	else {
+		Operators.push_back(str);
+		AmountOperators.push_back(0);
+	}
+}
+
+void OperDict::Print()
+{
+	cout.setf(ios::left);
+	cout << "___________________________" << endl;
+	cout << "| Операнд:     Количество: |" << endl;
+	cout << "---------------------------" << endl;
+
+
+	for (int i = 0; i < Operators.size(); i++)
+		cout << "| " << setfill('.') << setw(18) << (Operators[i] + " ") << "| " << setfill(' ') << setw(3) << AmountOperators[i] << " |" << endl;
+	cout << "---------------------------" << endl;
+}
+
 string IntToStr(int val)
 {
 	stringstream ss;
@@ -631,6 +679,24 @@ vector <string> GetFuncParams(string str)
 	return result;
 }
 
+string GetFuncName(string str)
+{
+	trim(str);
+	auto x = GetStrLexems(str);
+	bool HasType = false;
+	bool IsFunc = true;
+	int k = 0;
+	//return x;
+	for (int i = 0; i < types.size(); i++)
+		if (x[0] == types[i])
+			HasType = true;
+	if (!HasType) return "";
+	if (x[1] == "mutable") return "";
+	if (x[x.size() - 2] != "=") return "";
+	// let func ACB C =
+	return x[1];
+}
+
 void MaxCLI(int val)
 {
 	if (val > CLI)
@@ -935,6 +1001,34 @@ int main()
 	cout.precision(6);
 	GetHolstedLexems();
 
+
+
+
+	for (int i = 0; i < s.size(); i++)
+	{
+		string FName = GetFuncName(s[i]);
+
+		if (FName.length() > 0 && !operDict.IsIn(FName)) {
+			operDict.Add(FName);
+			for (int j = i + 1; j < s.size(); j++)
+			{
+				if (!GetVarName(s[j]).length())
+				{
+					auto x = GetStrLexems(s[j]);
+					for (int k = 0; k < x.size(); k++)
+					{
+						if (x[k] == FName)
+							operDict.Add(FName);
+					}
+				}
+			}
+		}
+	}
+
+
+
+
+
 	for (int i = 0; i < l.size(); i++)
 		HolstedOperators[GetIndexOfHolsted(l[i])] += IsHolstedLexem(l[i]);
 	cout << "___________________________" << endl;
@@ -951,6 +1045,12 @@ int main()
 			opFullCount += HolstedOperators[i];
 		}
 
+	opCount += operDict.Operators.size();
+	for (int i = 0; i < operDict.Operators.size(); i++)
+	{
+		cout << "| " << setfill('.') << setw(18) << (operDict.Operators[i] + " ") << "| " << setfill(' ') << setw(3) << operDict.AmountOperators[i] << " |" << endl;
+		opFullCount += operDict.AmountOperators[i];
+	}
 	cout << "---------------------------" << endl;
 	cout << " Число операторов: " << opCount << endl;
 	cout << " Общее число операторов: " << opFullCount << endl;

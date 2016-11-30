@@ -13,7 +13,6 @@ let main argv =
     let mutable len = 0
     let mutable super = 0
     let notmut = 0
-    
     //let VAR = 9
     len <- line.Length
     match len with
