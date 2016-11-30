@@ -187,9 +187,19 @@ public:
 	void Add(string str);
 	bool IsIn(string str);
 	void Print();
+	int GetSize();
 };
 
 OperandDict opDict;
+
+int OperandDict::GetSize()
+{
+	int size = 0;
+	for (int i = 0; i < Operands.size(); i++)
+		if (!isdigit(Operands[i][0]))
+			size++;
+	return size;
+}
 
 bool OperandDict::IsIn(string str)
 {
@@ -1028,9 +1038,12 @@ int main()
 
 
 
-
 	for (int i = 0; i < l.size(); i++)
 		HolstedOperators[GetIndexOfHolsted(l[i])] += IsHolstedLexem(l[i]);
+
+
+
+
 	cout << "___________________________" << endl;
 	cout << "| Îïåðàòîð:    Êîëè÷åñòâî: |" << endl;
 	cout << "---------------------------" << endl;
@@ -1056,11 +1069,15 @@ int main()
 	cout << " Îáùåå ÷èñëî îïåðàòîðîâ: " << opFullCount << endl;
 	cout << "---------------------------" << endl;
 
+
+
+
+
 	for (int i = 0; i < s.size(); i++)
 	{
 		string VName = GetVarName(s[i]);
 		// BEGIN ÏÀÐÑÈÍÃ ÏÀÐÀÌÅÒÐÎÂ
-		/*
+		
 		auto f = GetFuncParams(s[i]);
 		for (int y = 0; y < f.size(); y++)
 			if (!opDict.IsIn(f[y]))
@@ -1079,20 +1096,20 @@ int main()
 					}
 				}
 			}
-		*/
+		
 		// END ÏÀÐÑÈÍÃ ÏÀÐÀÌÅÒÐÎÂ
-		auto f = GetDigits(s[i]);
-		for (int y = 0; y < f.size(); y++)
+		auto z = GetDigits(s[i]);
+		for (int y = 0; y < z.size(); y++)
 		{
-			if (!opDict.IsIn(f[y]))
+			if (!opDict.IsIn(z[y]))
 			{
 
-				opDict.Add(f[y]);
-				opDict.Add(f[y]);
+				opDict.Add(z[y]);
+				opDict.Add(z[y]);
 			}
 			else {
 
-				opDict.Add(f[y]);
+				opDict.Add(z[y]);
 			}
 		}
 		if (VName.length() > 0 && !opDict.IsIn(VName)) {
@@ -1113,6 +1130,22 @@ int main()
 	}
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	opDict.Print();
 
 	varCount = opDict.AmountOperands.size();
@@ -1121,6 +1154,15 @@ int main()
 		varFullCount += opDict.AmountOperands[i];
 	cout << " Îáùåå ÷èñëî îïåðàíäîâ: " << varFullCount << endl;
 	cout << "---------------------------" << endl << endl;
+
+
+
+
+
+
+
+
+
 
 	vocabulary = varCount + opCount;
 	longitude = varFullCount + opFullCount;
